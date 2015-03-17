@@ -4,6 +4,7 @@
 #include "../headers/bulk.h"
 #include "../headers/forces.h"
 #include "../headers/stress.h"
+#include "../headers/Cylindrical2d.h"
 
 void Input();
 void InitializeData();
@@ -57,11 +58,11 @@ void Input() {
     l = 1;
 
     // total number of grid nodes along the x1 axis
-    n1_g = 16;
+    n1_g = 128;
     // total number of grid nodes along the X2 axis
-    n2_g = 16;
+    n2_g = 128;
     // total number of grid nodes along the X3 axis
-    n3_g = 16;
+    n3_g = 2;
 
     // number of grid nodes along the x1 axis to 1 processor
     n1 = n1_g/1;
@@ -83,12 +84,12 @@ void Input() {
     // coordinates of bottom plane
     x3_b = 0.;
     // coordinates of top plane
-    x3_t = 2.;
+    x3_t = 0.1;
 
     // total number of steps
-    nStop = 1000;
+    nStop = 1;
     // print interval
-    nPrint = 100;
+    nPrint = 1;
 
     // Courant number
     CFL = 0.2;
@@ -232,13 +233,16 @@ void InitializeData() {
         x3[k + 1] = x3[k] + dx3;
     }
 
+    Cylindrical2d transform(0.4, 0.4, 0.204, 0.3, sound, 0.05, 1, 0);
+
     for (int i = 1; i < n1; ++i) {
         for (int j = 1; j < n2; ++j) {
             for (int k = 1; k < n3; ++k) {
-                u1nCon->elem(i, j, k) = u10;
-                u2nCon->elem(i, j, k) = u20;
+                double x = 0.5*(x1[i] + x1[i + 1]) , y = 0.5*(x2[j] + x2[j+1]);
+                u1nCon->elem(i, j, k) = transform.getXVelocity(x, y);
+                u2nCon->elem(i, j, k) = transform.getYVelocity(x, y);
                 u3nCon->elem(i, j, k) = u30;
-                ronCon->elem(i, j, k) = ro0_g;
+                ronCon->elem(i, j, k) = transform.density(x, y);
                 tnCon->elem(i, j, k) = t0;
             }
         }
@@ -247,11 +251,24 @@ void InitializeData() {
     for (int i = 1; i <= n1; ++i) {
         for (int j = 1; j <= n2; ++j) {
             for (int k = 1; k <= n3; ++k) {
-                p1->elem(i, j, k) = p2->elem(i, j, k) = p3->elem(i, j, k)= 0.;
-                u11->elem(i, j, k) = u12->elem(i, j, k) = u13->elem(i, j, k) = u10;
-                u21->elem(i, j, k) = u22->elem(i, j, k) = u23->elem(i, j, k) = u20;
+                double x = x1[i], x_c = 0.5*(x1[i] + x1[i + 1]), y = x2[j], y_c = 0.5*(x2[j] + x2[j+1]);
+                p1->elem(i, j, k) = transform.pressure(x, y_c);
+                p2->elem(i, j, k) = transform.pressure(x_c, y);
+                p3->elem(i, j, k)= transform.pressure(x_c, y_c);
+
+                ro1->elem(i, j, k) = transform.density(x, y_c);
+                ro2->elem(i, j, k) = transform.density(x_c, y);
+                ro3->elem(i, j, k) = transform.density(x_c, y_c);
+
+                u11->elem(i, j, k) = transform.getXVelocity(x, y_c);
+                u12->elem(i, j, k) = transform.getXVelocity(x_c, y);
+                u13->elem(i, j, k) = transform.getXVelocity(x_c, y_c);
+
+                u21->elem(i, j, k) = transform.getYVelocity(x, y_c);
+                u22->elem(i, j, k) = transform.getYVelocity(x_c, y);
+                u23->elem(i, j, k) = transform.getYVelocity(x_c, y_c);
+
                 u31->elem(i, j, k) = u32->elem(i, j, k) = u33->elem(i, j, k) = u30;
-                ro1->elem(i, j, k) = ro2->elem(i, j, k) = ro3->elem(i, j, k) = ro0_g;
             }
         }
     }
@@ -478,18 +495,18 @@ void Phase1() {
         for (int k = 1; k < n3; k++)
         {
             // on the north plane
-            u1nCon->elem(i, n2, k) = /*u1nCon->elem(i, 1, k);*/0;
-            u2nCon->elem(i, n2, k) = /*u2nCon->elem(i, 1, k);*/0;
-            u3nCon->elem(i, n2, k) = /*u3nCon->elem(i, 1, k);*/0;
-            ronCon->elem(i, n2, k) = ronCon->elem(i, n2 - 1, k);
-            tnCon->elem(i, n2, k) = /*tnCon->elem(i, 1, k);*/t0;
+            u1nCon->elem(i, n2, k) = u1nCon->elem(i, 1, k);//0;
+            u2nCon->elem(i, n2, k) = u2nCon->elem(i, 1, k);//0;
+            u3nCon->elem(i, n2, k) = u3nCon->elem(i, 1, k);//0;
+            ronCon->elem(i, n2, k) = ronCon->elem(i, 1, k);
+            tnCon->elem(i, n2, k) = tnCon->elem(i, 1, k);//t0;
 
             // on the south plane
-            u1nCon->elem(i, 0, k) = /*u1nCon->elem(i, n2 - 1, k);*/0;
-            u2nCon->elem(i, 0, k) = /*u2nCon->elem(i, n2 - 1, k);*/0;
-            u3nCon->elem(i, 0, k) = /*u3nCon->elem(i, n2 - 1, k);*/0;
-            ronCon->elem(i, 0, k) = ronCon->elem(i, 1, k);
-            tnCon->elem(i, 0, k) = /*tnCon->elem(i, n2 - 1, k);*/t0;
+            u1nCon->elem(i, 0, k) = u1nCon->elem(i, n2 - 1, k);//0;
+            u2nCon->elem(i, 0, k) = u2nCon->elem(i, n2 - 1, k);//0;
+            u3nCon->elem(i, 0, k) = u3nCon->elem(i, n2 - 1, k);//0;
+            ronCon->elem(i, 0, k) = ronCon->elem(i, n2 - 1, k);
+            tnCon->elem(i, 0, k) = tnCon->elem(i, n2 - 1, k);//t0;
         }
     }
 
@@ -499,18 +516,18 @@ void Phase1() {
         for (int j = 1; j < n2; ++j)
         {
             // on the top plane
-            u1nCon->elem(i, j, n3) = /*u1nCon->elem(i, j, 1);*/0;
-            u2nCon->elem(i, j, n3) = /*u2nCon->elem(i, j, 1);*/0;
-            u3nCon->elem(i, j, n3) = /*u3nCon->elem(i, j, 1);*/0;
-            ronCon->elem(i, j, n3) = ronCon->elem(i, j, n3 - 1);
-            tnCon->elem(i, j, n3) = /*tnCon->elem(i, j, 1);*/t0;
+            u1nCon->elem(i, j, n3) = u1nCon->elem(i, j, 1);//0;
+            u2nCon->elem(i, j, n3) = u2nCon->elem(i, j, 1);//0;
+            u3nCon->elem(i, j, n3) = u3nCon->elem(i, j, 1);//0;
+            ronCon->elem(i, j, n3) = ronCon->elem(i, j, 1);
+            tnCon->elem(i, j, n3) = tnCon->elem(i, j, 1);//t0;
 
             // on the bottom plane
-            u1nCon->elem(i, j, 0) = /*u1nCon->elem(i, j, n3 - 1);*/0;
-            u2nCon->elem(i, j, 0) = /*u2nCon->elem(i, j, n3 - 1);*/0;
-            u3nCon->elem(i, j, 0) = /*u3nCon->elem(i, j, n3 - 1);*/0;
-            ronCon->elem(i, j, 0) = ronCon->elem(i, j, 1);
-            tnCon->elem(i, j, 0) = /*tnCon->elem(i, j, n3 - 1);*/t0;
+            u1nCon->elem(i, j, 0) = u1nCon->elem(i, j, n3 - 1);//0;
+            u2nCon->elem(i, j, 0) = u2nCon->elem(i, j, n3 - 1);//0;
+            u3nCon->elem(i, j, 0) = u3nCon->elem(i, j, n3 - 1);//0;
+            ronCon->elem(i, j, 0) = ronCon->elem(i, j, n3 - 1);
+            tnCon->elem(i, j, 0) = tnCon->elem(i, j, n3 - 1);//t0;
         }
     }
 }
