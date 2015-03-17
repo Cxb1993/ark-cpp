@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include <math.h>
+#include <cmath>
 #include "../headers/constants.h"
 #include "../headers/bulk.h"
 #include "../headers/forces.h"
