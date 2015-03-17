@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include <math.h>
+#include <cmath>
 #include "../headers/constants.h"
 #include "../headers/bulk.h"
 #include "../headers/forces.h"
@@ -87,15 +87,15 @@ void Input() {
     x3_t = 0.1;
 
     // total number of steps
-    nStop = 1;
+    nStop = 1000;
     // print interval
-    nPrint = 1;
+    nPrint = 10;
 
     // Courant number
     CFL = 0.2;
 
     // kinematic viscosity
-    VIS = 0.5;  // 0.5
+    VIS = 1/100000;  // 0.5
     // initial temperature
     t0 = 1.;
 
@@ -584,18 +584,18 @@ void StressTensor() {
         for (int k = 1; k < n3; k++)
         {
             // on the north plane
-            u1Con->elem(i, n2, k) = /*u1Con->elem(i, 1, k);*/0;
-            u2Con->elem(i, n2, k) = /*u2Con->elem(i, 1, k);*/0;
-            u3Con->elem(i, n2, k) = /*u3Con->elem(i, 1, k);*/0;
-            roCon->elem(i, n2, k) = roCon->elem(i, n2 - 1, k);
-            tCon->elem(i, n2, k) = /*tCon->elem(i, 1, k);*/t0;
+            u1Con->elem(i, n2, k) = u1Con->elem(i, 1, k);//0;
+            u2Con->elem(i, n2, k) = u2Con->elem(i, 1, k);//0;
+            u3Con->elem(i, n2, k) = u3Con->elem(i, 1, k);//0;
+            roCon->elem(i, n2, k) = roCon->elem(i, 1, k);
+            tCon->elem(i, n2, k) = tCon->elem(i, 1, k);//t0;
 
             // on the south plane
-            u1Con->elem(i, 0, k) = /*u1Con->elem(i, n2 - 1, k);*/0;
-            u2Con->elem(i, 0, k) = /*u2Con->elem(i, n2 - 1, k);*/0;
-            u3Con->elem(i, 0, k) = /*u3Con->elem(i, n2 - 1, k);*/0;
-            roCon->elem(i, 0, k) = roCon->elem(i, 1, k);
-            tCon->elem(i, 0, k) = /*tCon->elem(i, n2 - 1, k);*/t0;
+            u1Con->elem(i, 0, k) = u1Con->elem(i, n2 - 1, k);//0;
+            u2Con->elem(i, 0, k) = u2Con->elem(i, n2 - 1, k);//0;
+            u3Con->elem(i, 0, k) = u3Con->elem(i, n2 - 1, k);//0;
+            roCon->elem(i, 0, k) = roCon->elem(i, n2 - 1, k);
+            tCon->elem(i, 0, k) = tCon->elem(i, n2 - 1, k);//t0;
         }
     }
 
@@ -605,18 +605,18 @@ void StressTensor() {
         for (int j = 1; j < n2; ++j)
         {
             // on the top plane
-            u1Con->elem(i, j, n3) = /*u1Con->elem(i, j, 1);*/0;
-            u2Con->elem(i, j, n3) = /*u2Con->elem(i, j, 1);*/0;
-            u3Con->elem(i, j, n3) = /*u3Con->elem(i, j, 1);*/0;
-            roCon->elem(i, j, n3) = roCon->elem(i, j, n3 - 1);
-            tCon->elem(i, j, n3) = /*tCon->elem(i, j, 1);*/t0;
+            u1Con->elem(i, j, n3) = u1Con->elem(i, j, 1);//0;
+            u2Con->elem(i, j, n3) = u2Con->elem(i, j, 1);//0;
+            u3Con->elem(i, j, n3) = u3Con->elem(i, j, 1);//0;
+            roCon->elem(i, j, n3) = roCon->elem(i, j, 1);
+            tCon->elem(i, j, n3) = tCon->elem(i, j, 1);//t0;
 
             // on the bottom plane
-            u1Con->elem(i, j, 0) = /*u1Con->elem(i, j, n3 - 1);*/0;
-            u2Con->elem(i, j, 0) = /*u2Con->elem(i, j, n3 - 1);*/0;
-            u3Con->elem(i, j, 0) = /*u3Con->elem(i, j, n3 - 1);*/0;
-            roCon->elem(i, j, 0) = roCon->elem(i, j, 1);
-            tCon->elem(i, j, 0) = /*tCon->elem(i, j, n3 - 1);*/t0;
+            u1Con->elem(i, j, 0) = u1Con->elem(i, j, n3 - 1);//0;
+            u2Con->elem(i, j, 0) = u2Con->elem(i, j, n3 - 1);//0;
+            u3Con->elem(i, j, 0) = u3Con->elem(i, j, n3 - 1);//0;
+            roCon->elem(i, j, 0) = roCon->elem(i, j, n3 - 1);
+            tCon->elem(i, j, 0) = tCon->elem(i, j, n3 - 1);//t0;
         }
     }
 
@@ -1169,58 +1169,58 @@ void Phase2() {
             // assignment of boundary invatiants and add them to the buffer arrays
 
             // periodicity conditions
-//            rBuf[1] = rBuf[n2];
-//            tfBuf[1] = tfBuf[n2];
-//            u2fBuf[1] = u2fBuf[n2];
-//            u3fBuf[1] = u3fBuf[n2];
+            rBuf[1] = rBuf[n2];
+            tfBuf[1] = tfBuf[n2];
+            u2fBuf[1] = u2fBuf[n2];
+            u3fBuf[1] = u3fBuf[n2];
 
             // periodicity conditions
-//            qBuf[n2] = qBuf[1];
-//            tbBuf[n2] = tbBuf[1];
-//            u2bBuf[n2] = u2bBuf[1];
-//            u3bBuf[n2] = u3bBuf[1];
+            qBuf[n2] = qBuf[1];
+            tbBuf[n2] = tbBuf[1];
+            u2bBuf[n2] = u2bBuf[1];
+            u3bBuf[n2] = u3bBuf[1];
 
             // no-slip
             // j == 1
-            qn = qBuf[1];
-
-            pn = -qn*sound*ro0_g;
-            un = 0.;
-
-            ro_n = ro0_g + pn / (sound*sound);
-
-            tn = t0;
-            u1_n = 0;
-            u3_n = 0;
-
-            p2->elem(i, 1, k) = pn;
-            u22->elem(i, 1, k) = un;
-            ro2->elem(i, 1, k) = ro_n;
-            t2->elem(i, 1, k) = tn;
-            u12->elem(i, 1, k) = u1_n;
-            u32->elem(i, 1, k) = u3_n;
-
-            // j == n2
-            rn = rBuf[n2];
-
-            pn = rn*sound*ro0_g;
-            un = 0.;
-
-            ro_n = ro0_g + pn / (sound*sound);
-
-            tn = t0;
-            u1_n = 0.;
-            u3_n = 0.;
-
-            p2->elem(i, n2, k) = pn;
-            u22->elem(i, n2, k) = un;
-            ro2->elem(i, n2, k) = ro_n;
-            t2->elem(i, n2, k) = tn;
-            u12->elem(i, n2, k) = u1_n;
-            u32->elem(i, n2, k) = u3_n;
+//            qn = qBuf[1];
+//
+//            pn = -qn*sound*ro0_g;
+//            un = 0.;
+//
+//            ro_n = ro0_g + pn / (sound*sound);
+//
+//            tn = t0;
+//            u1_n = 0;
+//            u3_n = 0;
+//
+//            p2->elem(i, 1, k) = pn;
+//            u22->elem(i, 1, k) = un;
+//            ro2->elem(i, 1, k) = ro_n;
+//            t2->elem(i, 1, k) = tn;
+//            u12->elem(i, 1, k) = u1_n;
+//            u32->elem(i, 1, k) = u3_n;
+//
+//            // j == n2
+//            rn = rBuf[n2];
+//
+//            pn = rn*sound*ro0_g;
+//            un = 0.;
+//
+//            ro_n = ro0_g + pn / (sound*sound);
+//
+//            tn = t0;
+//            u1_n = 0.;
+//            u3_n = 0.;
+//
+//            p2->elem(i, n2, k) = pn;
+//            u22->elem(i, n2, k) = un;
+//            ro2->elem(i, n2, k) = ro_n;
+//            t2->elem(i, n2, k) = tn;
+//            u12->elem(i, n2, k) = u1_n;
+//            u32->elem(i, n2, k) = u3_n;
 
             // the flow variables calculations
-            for (int j = 2; j < n2; j++)
+            for (int j = 1; j <= n2; j++)
             {
                 rn = rBuf[j];
                 qn = qBuf[j];
@@ -1425,56 +1425,56 @@ void Phase2() {
             // assignment of boundary invatiants and add them to the buffer arrays
 
             // periodicity conditions
-//            rBuf[1] = rBuf[n3];
-//            tfBuf[1] = tfBuf[n3];
-//            u2fBuf[1] = u2fBuf[n3];
-//            u3fBuf[1] = u3fBuf[n3];
+            rBuf[1] = rBuf[n3];
+            tfBuf[1] = tfBuf[n3];
+            u2fBuf[1] = u2fBuf[n3];
+            u3fBuf[1] = u3fBuf[n3];
 
             // periodicity conditions
-//            qBuf[n3] = qBuf[1];
-//            tbBuf[n3] = tbBuf[1];
-//            u2bBuf[n3] = u2bBuf[1];
-//            u3bBuf[n3] = u3bBuf[1];
+            qBuf[n3] = qBuf[1];
+            tbBuf[n3] = tbBuf[1];
+            u2bBuf[n3] = u2bBuf[1];
+            u3bBuf[n3] = u3bBuf[1];
 
             // no-slip conditions
             // k == 1;
-			qn = qBuf[1];
-			un = 0.;
-			pn = -qn*sound*ro0_g;
-			ro_n = ro0_g + pn / (sound*sound);
-
-			tn = t0;
-			u1_n = 0.;
-			u2_n = 0.;
-
-			p3->elem(i, j, 1) = pn;
-			u33->elem(i, j, 1) = un;
-			ro3->elem(i, j, 1) = ro_n;
-			t3->elem(i, j, 1) = tn;
-			u13->elem(i, j, 1) = u1_n;
-			u23->elem(i, j, 1) = u2_n;
-
-
-			// k == n3
-			rn = rBuf[n3];
-
-			un = 0.;
-			pn = rn*sound*ro0_g;
-			ro_n = ro0_g + pn / (sound*sound);
-
-			tn = t0;
-			u1_n = 0.;
-			u2_n = 0.;
-
-			p3->elem(i, j, n3) = pn;
-			u33->elem(i, j, n3) = un;
-			ro3->elem(i, j, n3) = ro_n;
-			t1->elem(i, j, n3) = tn;
-			u13->elem(i, j, n3) = u1_n;
-			u23->elem(i, j, n3) = u2_n;
+//			qn = qBuf[1];
+//			un = 0.;
+//			pn = -qn*sound*ro0_g;
+//			ro_n = ro0_g + pn / (sound*sound);
+//
+//			tn = t0;
+//			u1_n = 0.;
+//			u2_n = 0.;
+//
+//			p3->elem(i, j, 1) = pn;
+//			u33->elem(i, j, 1) = un;
+//			ro3->elem(i, j, 1) = ro_n;
+//			t3->elem(i, j, 1) = tn;
+//			u13->elem(i, j, 1) = u1_n;
+//			u23->elem(i, j, 1) = u2_n;
+//
+//
+//			// k == n3
+//			rn = rBuf[n3];
+//
+//			un = 0.;
+//			pn = rn*sound*ro0_g;
+//			ro_n = ro0_g + pn / (sound*sound);
+//
+//			tn = t0;
+//			u1_n = 0.;
+//			u2_n = 0.;
+//
+//			p3->elem(i, j, n3) = pn;
+//			u33->elem(i, j, n3) = un;
+//			ro3->elem(i, j, n3) = ro_n;
+//			t1->elem(i, j, n3) = tn;
+//			u13->elem(i, j, n3) = u1_n;
+//			u23->elem(i, j, n3) = u2_n;
 
             // the flow variables calculations
-            for (int k = 2; k < n3; k++)
+            for (int k = 1; k <= n3; k++)
             {
                 rn = rBuf[k];
                 qn = qBuf[k];
