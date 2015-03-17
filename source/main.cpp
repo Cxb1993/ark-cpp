@@ -4,7 +4,7 @@
 #include "../headers/bulk.h"
 #include "../headers/forces.h"
 #include "../headers/stress.h"
-#include "../headers/Cylindrical2d.h"
+#include "../headers/Gaussian.h"
 
 void Input();
 void InitializeData();
@@ -233,7 +233,7 @@ void InitializeData() {
         x3[k + 1] = x3[k] + dx3;
     }
 
-    Cylindrical2d transform(0.4, 0.4, 0.204, 0.3, sound, 0.05, 1, 0);
+    Gaussian transform(0.4, 0.4, 0.204, 0.3, sound, 0.05, 1, 0);
 
     for (int i = 1; i < n1; ++i) {
         for (int j = 1; j < n2; ++j) {

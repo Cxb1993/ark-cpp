@@ -6,7 +6,7 @@
 #define _ARK_CPP_CYLINDRICAL_H_
 
 
-class Cylindrical2d {
+class Gaussian {
 private:
     double	_x0,
             _y0,
@@ -20,7 +20,7 @@ private:
     double eta(double x, double y);
     double azimuthalVelocity(double x, double y);
 public:
-    Cylindrical2d(double x0, double y0, double alpha, double betta, double sound, double r0, double ro0, double P0);
+    Gaussian(double x0, double y0, double alpha, double betta, double sound, double r0, double ro0, double P0);
     double radius(double x, double y);
     double getXVelocity(double x, double y);
     double getYVelocity(double x, double y);
