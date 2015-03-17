@@ -4,7 +4,7 @@
 #include "../headers/bulk.h"
 #include "../headers/forces.h"
 #include "../headers/stress.h"
-#include "../headers/Gaussian.h"
+#include "../headers/Helper.h"
 
 void Input();
 void InitializeData();
@@ -87,7 +87,7 @@ void Input() {
     x3_t = 0.1;
 
     // total number of steps
-    nStop = 1000;
+    nStop = 100;
     // print interval
     nPrint = 10;
 
@@ -233,16 +233,16 @@ void InitializeData() {
         x3[k + 1] = x3[k] + dx3;
     }
 
-    Gaussian transform(0.4, 0.4, 0.204, 0.3, sound, 0.05, 1, 0);
+    Helper helper(0.4, 0.4, 0.204, 0.3, sound, 0.05, 1, 0);
 
     for (int i = 1; i < n1; ++i) {
         for (int j = 1; j < n2; ++j) {
             for (int k = 1; k < n3; ++k) {
                 double x = 0.5*(x1[i] + x1[i + 1]) , y = 0.5*(x2[j] + x2[j+1]);
-                u1nCon->elem(i, j, k) = transform.getXVelocity(x, y);
-                u2nCon->elem(i, j, k) = transform.getYVelocity(x, y);
+                u1nCon->elem(i, j, k) = helper.getXVelocity(x, y);
+                u2nCon->elem(i, j, k) = helper.getYVelocity(x, y);
                 u3nCon->elem(i, j, k) = u30;
-                ronCon->elem(i, j, k) = transform.density(x, y);
+                ronCon->elem(i, j, k) = helper.density(x, y);
                 tnCon->elem(i, j, k) = t0;
             }
         }
@@ -252,21 +252,21 @@ void InitializeData() {
         for (int j = 1; j <= n2; ++j) {
             for (int k = 1; k <= n3; ++k) {
                 double x = x1[i], x_c = 0.5*(x1[i] + x1[i + 1]), y = x2[j], y_c = 0.5*(x2[j] + x2[j+1]);
-                p1->elem(i, j, k) = transform.pressure(x, y_c);
-                p2->elem(i, j, k) = transform.pressure(x_c, y);
-                p3->elem(i, j, k)= transform.pressure(x_c, y_c);
+                p1->elem(i, j, k) = helper.pressure(x, y_c);
+                p2->elem(i, j, k) = helper.pressure(x_c, y);
+                p3->elem(i, j, k)= helper.pressure(x_c, y_c);
 
-                ro1->elem(i, j, k) = transform.density(x, y_c);
-                ro2->elem(i, j, k) = transform.density(x_c, y);
-                ro3->elem(i, j, k) = transform.density(x_c, y_c);
+                ro1->elem(i, j, k) = helper.density(x, y_c);
+                ro2->elem(i, j, k) = helper.density(x_c, y);
+                ro3->elem(i, j, k) = helper.density(x_c, y_c);
 
-                u11->elem(i, j, k) = transform.getXVelocity(x, y_c);
-                u12->elem(i, j, k) = transform.getXVelocity(x_c, y);
-                u13->elem(i, j, k) = transform.getXVelocity(x_c, y_c);
+                u11->elem(i, j, k) = helper.getXVelocity(x, y_c);
+                u12->elem(i, j, k) = helper.getXVelocity(x_c, y);
+                u13->elem(i, j, k) = helper.getXVelocity(x_c, y_c);
 
-                u21->elem(i, j, k) = transform.getYVelocity(x, y_c);
-                u22->elem(i, j, k) = transform.getYVelocity(x_c, y);
-                u23->elem(i, j, k) = transform.getYVelocity(x_c, y_c);
+                u21->elem(i, j, k) = helper.getYVelocity(x, y_c);
+                u22->elem(i, j, k) = helper.getYVelocity(x_c, y);
+                u23->elem(i, j, k) = helper.getYVelocity(x_c, y_c);
 
                 u31->elem(i, j, k) = u32->elem(i, j, k) = u33->elem(i, j, k) = u30;
             }
