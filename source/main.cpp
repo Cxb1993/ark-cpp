@@ -74,12 +74,12 @@ void Input() {
     // coordinates of west plane
     x1_w = 0.;
     // coordinates of east plane
-    x1_e = 1.;
+    x1_e = 2*M_PI;
 
     // coordinates of south plane
     x2_s = 0.;
     // coordinates of north plane
-    x2_n = 1.;
+    x2_n = 2*M_PI;
 
     // coordinates of bottom plane
     x3_b = 0.;
@@ -87,7 +87,7 @@ void Input() {
     x3_t = 0.1;
 
     // total number of steps
-    nStop = 100;
+    nStop = 1000;
     // print interval
     nPrint = 10;
 
@@ -233,7 +233,7 @@ void InitializeData() {
         x3[k + 1] = x3[k] + dx3;
     }
 
-    Helper helper(0.4, 0.4, 0.204, 0.3, sound, 0.05, 1, 0);
+    Helper helper(sound, ro0_g, 0);
 
     for (int i = 1; i < n1; ++i) {
         for (int j = 1; j < n2; ++j) {
