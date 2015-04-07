@@ -1591,9 +1591,9 @@ void WriteEnergy() {
     for(int i = 1; i < n1; i++) {
         for(int j = 1; j < n2; j++) {
             for(int k = 1; k < n3; k++) {
-                energy += u1Con->elem(i, j, k)*u1Con->elem(i, j, k) +
-                          u2Con->elem(i, j, k)*u2Con->elem(i, j, k) +
-                          u3Con->elem(i, j, k)*u3Con->elem(i, j, k)/2;
+                energy += (u1nCon->elem(i, j, k)*u1nCon->elem(i, j, k) +
+                          u2nCon->elem(i, j, k)*u2nCon->elem(i, j, k) +
+                          u3nCon->elem(i, j, k)*u3nCon->elem(i, j, k))/2;
             }
         }
     }
