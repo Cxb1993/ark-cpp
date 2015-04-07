@@ -29,6 +29,7 @@ int main(int argc, char** argv) {
 
     //first output
     WriteDataParaView();
+    WriteEnergy();
 
     nStep = 0;
     TIME = 0.0;
@@ -49,6 +50,7 @@ int main(int argc, char** argv) {
         if (nStep % nPrint == 0)
         {
             WriteDataParaView();
+            WriteEnergy();
             printf("step: %d dt:%E time:%8.4f\n", nStep, dt, TIME);
         }
     } while (nStep < nStop);
@@ -832,7 +834,7 @@ void Phase2() {
 
             int _i = 1, _n1 = n1;
 
-            if (x2Period) {
+            if (x1Period) {
                 // periodicity conditions
                 rBuf[1] = rBuf[n1];
                 tfBuf[1] = tfBuf[n1];
@@ -877,12 +879,12 @@ void Phase2() {
                 u2_n = 0.;
                 u3_n = 0.;
 
-                p2->elem(n2, j, k) = pn;
-                u22->elem(n2, j, k) = un;
-                ro2->elem(n2, j, k) = ro_n;
-                t2->elem(n2, j, k) = tn;
-                u12->elem(n2, j, k) = u2_n;
-                u32->elem(n2, j, k) = u3_n;
+                p2->elem(n1, j, k) = pn;
+                u22->elem(n1, j, k) = un;
+                ro2->elem(n1, j, k) = ro_n;
+                t2->elem(n1, j, k) = tn;
+                u12->elem(n1, j, k) = u2_n;
+                u32->elem(n1, j, k) = u3_n;
 
                 ++_i;
                 --_n1;
@@ -1584,7 +1586,7 @@ void FreeMemory() {
 }
 
 void WriteEnergy() {
-    char filename[] = "C:\\Users\\stopper\\Desktop\\out\\energy.txt";
+    char filename[] = "C:\\Users\\Alex\\Desktop\\IM\\ark-cpp\\out\\energy.txt";
     double energy = 0;
     for(int i = 1; i < n1; i++) {
         for(int j = 1; j < n2; j++) {
