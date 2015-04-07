@@ -95,4 +95,9 @@ Arr3d *p3, *ro3, *u13, *u23, *u33, *t3;
 
 double *rBuf, *qBuf, *tfBuf, *tbBuf, *u2fBuf, *u2bBuf, *u3fBuf, *u3bBuf;
 
+//	-----------------------------------------------------------------------------------
+//  condition(:,:,:) - 1 if solid medium - 0 if liquid medium
+
+Arr3d *condition;
+
 #endif //_ARK_CPP_BULK_H_

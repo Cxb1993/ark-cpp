@@ -1,9 +1,11 @@
 #include <stdio.h>
 #include <cmath>
+#include <string.h>
 #include "../headers/constants.h"
 #include "../headers/bulk.h"
 #include "../headers/forces.h"
 #include "../headers/stress.h"
+#include "../headers/BoundaryConditions.h"
 
 void Input();
 void InitializeData();
@@ -14,9 +16,12 @@ void StressTensor();
 void UseForces();
 void WriteDataParaView();
 void FreeMemory();
+void WriteEnergy();
 
 double min3d(double, double, double);
 double max3d(double, double, double);
+
+static void swap8(void *);
 
 int main(int argc, char** argv) {
     Input();
@@ -53,6 +58,9 @@ int main(int argc, char** argv) {
 }
 
 void Input() {
+    // Little and Big Endian
+    needSwap = true;
+
     // geometry index
     l = 1;
 
@@ -61,7 +69,7 @@ void Input() {
     // total number of grid nodes along the X2 axis
     n2_g = 16;
     // total number of grid nodes along the X3 axis
-    n3_g = 16;
+    n3_g = 32;
 
     // number of grid nodes along the x1 axis to 1 processor
     n1 = n1_g/1;
@@ -69,6 +77,11 @@ void Input() {
     n2 = n2_g/1;
     // number of grid nodes along the X3 axis to 1 processor
     n3 = n3_g/1;
+
+    // boundary conditions
+    x1Period = true;
+    x2Period = false;
+    x3Period = true;
 
     // coordinates of west plane
     x1_w = 0.;
@@ -94,16 +107,16 @@ void Input() {
     CFL = 0.2;
 
     // kinematic viscosity
-    VIS = 0.5;  // 0.5
+    VIS = 0.5;
     // initial temperature
     t0 = 1.;
 
     // initial velocity along the x1 axis
-    u10 = 1.;
+    u10 = 0.;
     // initial velocity along the X2 axis
     u20 = 0.;
     // initial velocity along the X3 axis
-    u30 = 0.;
+    u30 = 1.;
     // sound velocity
     sound = 10.;
 
@@ -149,6 +162,9 @@ void Input() {
     f1 = new Arr3d(n1 + 1, n2 + 1, n3 + 1);
     f2 = new Arr3d(n1 + 1, n2 + 1, n3 + 1);
     f3 = new Arr3d(n1 + 1, n2 + 1, n3 + 1);
+
+    // solid/liqud condition
+    condition = new Arr3d(n1 + 1, n2 + 1, n3 + 1);
 
     // variables perpendicular to the axis x1
     ro1 = new Arr3d(n1 + 2, n2 + 2, n3 + 2);
@@ -256,6 +272,13 @@ void InitializeData() {
         }
     }
 
+    for (int i = 1; i < n1; ++i) {
+        for (int j = 1; j < n2; ++j) {
+            for (int k = 1; k < n3; ++k) {
+                condition->elem(i, j, k) = 0;
+            }
+        }
+    }
 }
 
 void TimeStepSize() {
@@ -347,95 +370,103 @@ void Phase1() {
         {
             for (int k = 1; k < n3; k++)
             {
-                // #########################################################
-                //	get velocity, density , temperature and pressure values
-                // #########################################################
+                if (condition->elem(i, j, k) == 0) {
+                    // #########################################################
+                    //	get velocity, density , temperature and pressure values
+                    // #########################################################
 
-                // east plane
-                u1_e = u11->elem(i + 1, j, k);
-                u2_e = u21->elem(i + 1, j, k);
-                u3_e = u31->elem(i + 1, j, k);
-                ro_e = ro1->elem(i + 1, j, k);
-                t_e = t1->elem(i + 1, j, k);
-                p_e = p1->elem(i + 1, j, k);
-                // west plane
-                u1_w = u11->elem(i, j, k);
-                u2_w = u21->elem(i, j, k);
-                u3_w = u31->elem(i, j, k);
-                ro_w = ro1->elem(i, j, k);
-                t_w = t1->elem(i, j, k);
-                p_w = p1->elem(i, j, k);
+                    // east plane
+                    u1_e = u11->elem(i + 1, j, k);
+                    u2_e = u21->elem(i + 1, j, k);
+                    u3_e = u31->elem(i + 1, j, k);
+                    ro_e = ro1->elem(i + 1, j, k);
+                    t_e = t1->elem(i + 1, j, k);
+                    p_e = p1->elem(i + 1, j, k);
+                    // west plane
+                    u1_w = u11->elem(i, j, k);
+                    u2_w = u21->elem(i, j, k);
+                    u3_w = u31->elem(i, j, k);
+                    ro_w = ro1->elem(i, j, k);
+                    t_w = t1->elem(i, j, k);
+                    p_w = p1->elem(i, j, k);
 
-                // north plane
-                u1_n = u12->elem(i, j + 1, k);
-                u2_n = u22->elem(i, j + 1, k);
-                u3_n = u32->elem(i, j + 1, k);
-                ro_n = ro2->elem(i, j + 1, k);
-                t_n = t2->elem(i, j + 1, k);
-                p_n = p2->elem(i, j + 1, k);
-                // south plane
-                u1_s = u12->elem(i, j, k);
-                u2_s = u22->elem(i, j, k);
-                u3_s = u32->elem(i, j, k);
-                ro_s = ro2->elem(i, j, k);
-                t_s = t2->elem(i, j, k);
-                p_s = p2->elem(i, j, k);
+                    // north plane
+                    u1_n = u12->elem(i, j + 1, k);
+                    u2_n = u22->elem(i, j + 1, k);
+                    u3_n = u32->elem(i, j + 1, k);
+                    ro_n = ro2->elem(i, j + 1, k);
+                    t_n = t2->elem(i, j + 1, k);
+                    p_n = p2->elem(i, j + 1, k);
+                    // south plane
+                    u1_s = u12->elem(i, j, k);
+                    u2_s = u22->elem(i, j, k);
+                    u3_s = u32->elem(i, j, k);
+                    ro_s = ro2->elem(i, j, k);
+                    t_s = t2->elem(i, j, k);
+                    p_s = p2->elem(i, j, k);
 
-                // top plane
-                u1_t = u13->elem(i, j, k + 1);
-                u2_t = u23->elem(i, j, k + 1);
-                u3_t = u33->elem(i, j, k + 1);
-                ro_t = ro3->elem(i, j, k + 1);
-                t_t = t3->elem(i, j, k + 1);
-                p_t = p3->elem(i, j, k + 1);
-                // bottom plane
-                u1_b = u13->elem(i, j, k);
-                u2_b = u23->elem(i, j, k);
-                u3_b = u33->elem(i, j, k);
-                ro_b = ro3->elem(i, j, k);
-                t_b = t3->elem(i, j, k);
-                p_b = p3->elem(i, j, k);
+                    // top plane
+                    u1_t = u13->elem(i, j, k + 1);
+                    u2_t = u23->elem(i, j, k + 1);
+                    u3_t = u33->elem(i, j, k + 1);
+                    ro_t = ro3->elem(i, j, k + 1);
+                    t_t = t3->elem(i, j, k + 1);
+                    p_t = p3->elem(i, j, k + 1);
+                    // bottom plane
+                    u1_b = u13->elem(i, j, k);
+                    u2_b = u23->elem(i, j, k);
+                    u3_b = u33->elem(i, j, k);
+                    ro_b = ro3->elem(i, j, k);
+                    t_b = t3->elem(i, j, k);
+                    p_b = p3->elem(i, j, k);
 
-                // cell center
-                u1_c = u1Con->elem(i, j, k);
-                u2_c = u2Con->elem(i, j, k);
-                u3_c = u3Con->elem(i, j, k);
-                ro_c = roCon->elem(i, j, k);
-                t_c = tCon->elem(i, j, k);
+                    // cell center
+                    u1_c = u1Con->elem(i, j, k);
+                    u2_c = u2Con->elem(i, j, k);
+                    u3_c = u3Con->elem(i, j, k);
+                    ro_c = roCon->elem(i, j, k);
+                    t_c = tCon->elem(i, j, k);
 
-                // #####################################################
-                //				new values evaluating
-                // #####################################################
+                    // #####################################################
+                    //				new values evaluating
+                    // #####################################################
 
-                // new density
-                ro_cn = (ro_c*dvc - 0.5*dt*(
-                        (ro_e*u1_e - ro_w*u1_w)*ds1 +
-                                (ro_n*u2_n - ro_s*u2_s)*ds2 +
-                                (ro_t*u3_t - ro_b*u3_b)*ds3)) / dvc;
+                    // new density
+                    ro_cn = (ro_c * dvc - 0.5 * dt * (
+                            (ro_e * u1_e - ro_w * u1_w) * ds1 +
+                            (ro_n * u2_n - ro_s * u2_s) * ds2 +
+                            (ro_t * u3_t - ro_b * u3_b) * ds3)) / dvc;
 
-                // new conservative velocity along the X1 axis
-                u1_cn = (ro_c*u1_c*dvc - 0.5*dt*(
-                        ((ro_e*u1_e*u1_e + p_e) - (ro_w*u1_w*u1_w + p_w))*ds1 +
-                                (ro_n*u1_n*u2_n - ro_s*u1_s*u2_s)*ds2 +
-                                (ro_t*u1_t*u3_t - ro_b*u1_b*u3_b)*ds3)) / (ro_cn*dvc);
+                    // new conservative velocity along the X1 axis
+                    u1_cn = (ro_c * u1_c * dvc - 0.5 * dt * (
+                            ((ro_e * u1_e * u1_e + p_e) - (ro_w * u1_w * u1_w + p_w)) * ds1 +
+                            (ro_n * u1_n * u2_n - ro_s * u1_s * u2_s) * ds2 +
+                            (ro_t * u1_t * u3_t - ro_b * u1_b * u3_b) * ds3)) / (ro_cn * dvc);
 
-                // new conservative velocity along the X2 axis
-                u2_cn = (ro_c*u2_c*dvc - 0.5*dt*(
-                        (ro_e*u2_e*u1_e - ro_w*u2_w*u1_w)*ds1 +
-                                ((ro_n*u2_n*u2_n + p_n) - (ro_s*u2_s*u2_s + p_s))*ds2 +
-                                (ro_t*u2_t*u3_t - ro_b*u2_b*u3_b)*ds3)) / (ro_cn*dvc);
+                    // new conservative velocity along the X2 axis
+                    u2_cn = (ro_c * u2_c * dvc - 0.5 * dt * (
+                            (ro_e * u2_e * u1_e - ro_w * u2_w * u1_w) * ds1 +
+                            ((ro_n * u2_n * u2_n + p_n) - (ro_s * u2_s * u2_s + p_s)) * ds2 +
+                            (ro_t * u2_t * u3_t - ro_b * u2_b * u3_b) * ds3)) / (ro_cn * dvc);
 
-                // new conservative velocity along the X3 axis
-                u3_cn = (ro_c*u3_c*dvc - 0.5*dt*(
-                        (ro_e*u3_e*u1_e - ro_w*u3_w*u1_w)*ds1 +
-                                (ro_n*u3_n*u2_n - ro_s*u3_s*u2_s)*ds2 +
-                                ((ro_t*u3_t*u3_t + p_t) - (ro_b*u3_b*u3_b + p_b))*ds3)) / (ro_cn*dvc);
+                    // new conservative velocity along the X3 axis
+                    u3_cn = (ro_c * u3_c * dvc - 0.5 * dt * (
+                            (ro_e * u3_e * u1_e - ro_w * u3_w * u1_w) * ds1 +
+                            (ro_n * u3_n * u2_n - ro_s * u3_s * u2_s) * ds2 +
+                            ((ro_t * u3_t * u3_t + p_t) - (ro_b * u3_b * u3_b + p_b)) * ds3)) / (ro_cn * dvc);
 
-                // new temperature
-                t_cn = (ro_c*t_c*dvc - 0.5*dt*(
-                        (ro_e*t_e*u1_e - ro_w*t_w*u1_w)*ds1 +
-                                (ro_n*t_n*u2_n - ro_s*t_s*u2_s)*ds2 +
-                                (ro_t*t_t*u3_t - ro_b*t_b*u3_b)*ds3)) / (dvc*ro_cn);
+                    // new temperature
+                    t_cn = (ro_c * t_c * dvc - 0.5 * dt * (
+                            (ro_e * t_e * u1_e - ro_w * t_w * u1_w) * ds1 +
+                            (ro_n * t_n * u2_n - ro_s * t_s * u2_s) * ds2 +
+                            (ro_t * t_t * u3_t - ro_b * t_b * u3_b) * ds3)) / (dvc * ro_cn);
+                } else {
+                    u1_cn = 0.;
+                    u2_cn = 0.;
+                    u3_cn = 0.;
+                    ro_cn = ro0_g;
+                    t_cn = t0;
+                }
 
                 // finally
                 u1nCon->elem(i, j, k) = u1_cn;
@@ -451,68 +482,16 @@ void Phase1() {
     // 					boundary conditions
     // #####################################################
 
-    // along the X1 axis
-    for (int j = 1; j < n2; ++j)
-    {
-        for (int k = 1; k < n3; ++k)
-        {
-            // on the east plane
-            u1nCon->elem(n1, j, k) = u1nCon->elem(1, j, k);//0;
-            u2nCon->elem(n1, j, k) = u2nCon->elem(1, j, k);//0;
-            u3nCon->elem(n1, j, k) = u3nCon->elem(1, j, k);//0;
-            ronCon->elem(n1, j, k) = ronCon->elem(1, j, k);
-            tnCon->elem(n1, j, k) = tnCon->elem(1, j, k);//t0;
+    BoundaryConditions boundary(u1nCon, u2nCon, u3nCon, ronCon, tnCon, x1Period, x2Period, x3Period, n1, n2, n3, t0);
 
-            // on the west plane
-            u1nCon->elem(0, j, k) = u1nCon->elem(n1 - 1, j, k);//0;
-            u2nCon->elem(0, j, k) = u2nCon->elem(n1 - 1, j, k);//0;
-            u3nCon->elem(0, j, k) = u3nCon->elem(n1 - 1, j, k);//0;
-            ronCon->elem(0, j, k) = ronCon->elem(n1 - 1, j, k);
-            tnCon->elem(0, j, k) = tnCon->elem(n1 - 1, j, k);//t0;
-        }
-    }
+    // along the X1 axis
+    boundary.alongX1();
 
     // along the X2 axis
-    for (int i = 1; i < n1; i++)
-    {
-        for (int k = 1; k < n3; k++)
-        {
-            // on the north plane
-            u1nCon->elem(i, n2, k) = /*u1nCon->elem(i, 1, k);*/0;
-            u2nCon->elem(i, n2, k) = /*u2nCon->elem(i, 1, k);*/0;
-            u3nCon->elem(i, n2, k) = /*u3nCon->elem(i, 1, k);*/0;
-            ronCon->elem(i, n2, k) = ronCon->elem(i, n2 - 1, k);
-            tnCon->elem(i, n2, k) = /*tnCon->elem(i, 1, k);*/t0;
-
-            // on the south plane
-            u1nCon->elem(i, 0, k) = /*u1nCon->elem(i, n2 - 1, k);*/0;
-            u2nCon->elem(i, 0, k) = /*u2nCon->elem(i, n2 - 1, k);*/0;
-            u3nCon->elem(i, 0, k) = /*u3nCon->elem(i, n2 - 1, k);*/0;
-            ronCon->elem(i, 0, k) = ronCon->elem(i, 1, k);
-            tnCon->elem(i, 0, k) = /*tnCon->elem(i, n2 - 1, k);*/t0;
-        }
-    }
+    boundary.alongX2();
 
     // along the X3 axis
-    for (int i = 1; i < n1; ++i)
-    {
-        for (int j = 1; j < n2; ++j)
-        {
-            // on the top plane
-            u1nCon->elem(i, j, n3) = /*u1nCon->elem(i, j, 1);*/0;
-            u2nCon->elem(i, j, n3) = /*u2nCon->elem(i, j, 1);*/0;
-            u3nCon->elem(i, j, n3) = /*u3nCon->elem(i, j, 1);*/0;
-            ronCon->elem(i, j, n3) = ronCon->elem(i, j, n3 - 1);
-            tnCon->elem(i, j, n3) = /*tnCon->elem(i, j, 1);*/t0;
-
-            // on the bottom plane
-            u1nCon->elem(i, j, 0) = /*u1nCon->elem(i, j, n3 - 1);*/0;
-            u2nCon->elem(i, j, 0) = /*u2nCon->elem(i, j, n3 - 1);*/0;
-            u3nCon->elem(i, j, 0) = /*u3nCon->elem(i, j, n3 - 1);*/0;
-            ronCon->elem(i, j, 0) = ronCon->elem(i, j, 1);
-            tnCon->elem(i, j, 0) = /*tnCon->elem(i, j, n3 - 1);*/t0;
-        }
-    }
+    boundary.alongX3();
 }
 
 void StressTensor() {
@@ -540,68 +519,16 @@ void StressTensor() {
     // 					boudary conditions
     // #####################################################
 
-    // along the X1 axis
-    for (int j = 1; j < n2; ++j)
-    {
-        for (int k = 1; k < n3; ++k)
-        {
-            // on the east plane
-            u1Con->elem(n1, j, k) = u1Con->elem(1, j, k);//0;
-            u2Con->elem(n1, j, k) = u2Con->elem(1, j, k);//0;
-            u3Con->elem(n1, j, k) = u3Con->elem(1, j, k);//0;
-            roCon->elem(n1, j, k) = roCon->elem(1, j, k);
-            tCon->elem(n1, j, k) = tCon->elem(1, j, k);//t0;
+    BoundaryConditions boundary(u1Con, u2Con, u3Con, roCon, tCon, x1Period, x2Period, x3Period, n1, n2, n3, t0);
 
-            // on the west plane
-            u1Con->elem(0, j, k) = u1Con->elem(n1 - 1, j, k);//0;
-            u2Con->elem(0, j, k) = u2Con->elem(n1 - 1, j, k);//0;
-            u3Con->elem(0, j, k) = u3Con->elem(n1 - 1, j, k);//0;
-            roCon->elem(0, j, k) = roCon->elem(n1 - 1, j, k);
-            tCon->elem(0, j, k) = tCon->elem(n1 - 1, j, k);//t0;
-        }
-    }
+    // along the X1 axis
+    boundary.alongX1();
 
     // along the X2 axis
-    for (int i = 1; i < n1; i++)
-    {
-        for (int k = 1; k < n3; k++)
-        {
-            // on the north plane
-            u1Con->elem(i, n2, k) = /*u1Con->elem(i, 1, k);*/0;
-            u2Con->elem(i, n2, k) = /*u2Con->elem(i, 1, k);*/0;
-            u3Con->elem(i, n2, k) = /*u3Con->elem(i, 1, k);*/0;
-            roCon->elem(i, n2, k) = roCon->elem(i, n2 - 1, k);
-            tCon->elem(i, n2, k) = /*tCon->elem(i, 1, k);*/t0;
-
-            // on the south plane
-            u1Con->elem(i, 0, k) = /*u1Con->elem(i, n2 - 1, k);*/0;
-            u2Con->elem(i, 0, k) = /*u2Con->elem(i, n2 - 1, k);*/0;
-            u3Con->elem(i, 0, k) = /*u3Con->elem(i, n2 - 1, k);*/0;
-            roCon->elem(i, 0, k) = roCon->elem(i, 1, k);
-            tCon->elem(i, 0, k) = /*tCon->elem(i, n2 - 1, k);*/t0;
-        }
-    }
+    boundary.alongX2();
 
     // along the X3 axis
-    for (int i = 1; i < n1; ++i)
-    {
-        for (int j = 1; j < n2; ++j)
-        {
-            // on the top plane
-            u1Con->elem(i, j, n3) = /*u1Con->elem(i, j, 1);*/0;
-            u2Con->elem(i, j, n3) = /*u2Con->elem(i, j, 1);*/0;
-            u3Con->elem(i, j, n3) = /*u3Con->elem(i, j, 1);*/0;
-            roCon->elem(i, j, n3) = roCon->elem(i, j, n3 - 1);
-            tCon->elem(i, j, n3) = /*tCon->elem(i, j, 1);*/t0;
-
-            // on the bottom plane
-            u1Con->elem(i, j, 0) = /*u1Con->elem(i, j, n3 - 1);*/0;
-            u2Con->elem(i, j, 0) = /*u2Con->elem(i, j, n3 - 1);*/0;
-            u3Con->elem(i, j, 0) = /*u3Con->elem(i, j, n3 - 1);*/0;
-            roCon->elem(i, j, 0) = roCon->elem(i, j, 1);
-            tCon->elem(i, j, 0) = /*tCon->elem(i, j, n3 - 1);*/t0;
-        }
-    }
+    boundary.alongX3();
 
     // #####################################################
     // 				bypassing along the faces
@@ -624,9 +551,9 @@ void StressTensor() {
                 u3_cw = u3Con->elem(i - 1, j, k);
 
                 // friction stress
-                sigm11->elem(i, j, k)=VIS*(u1_c - u1_cw)/dx1;
-                sigm21->elem(i, j, k)=VIS*(u2_c - u2_cw)/dx1;
-                sigm31->elem(i, j, k)=VIS*(u3_c - u3_cw)/dx1;
+                sigm11->elem(i, j, k) = VIS * (u1_c - u1_cw) / dx1;
+                sigm21->elem(i, j, k) = VIS * (u2_c - u2_cw) / dx1;
+                sigm31->elem(i, j, k) = VIS * (u3_c - u3_cw) / dx1;
             }
         }
     }
@@ -648,9 +575,9 @@ void StressTensor() {
                 u3_cs = u3Con->elem(i, j - 1, k);
 
                 // friction stress
-                sigm12->elem(i, j, k)=VIS*(u1_c - u1_cs)/dx2;
-                sigm22->elem(i, j, k)=VIS*(u2_c - u2_cs)/dx2;
-                sigm32->elem(i, j, k)=VIS*(u3_c - u3_cs)/dx2;
+                sigm12->elem(i, j, k) = VIS * (u1_c - u1_cs) / dx2;
+                sigm22->elem(i, j, k) = VIS * (u2_c - u2_cs) / dx2;
+                sigm32->elem(i, j, k) = VIS * (u3_c - u3_cs) / dx2;
             }
         }
     }
@@ -672,9 +599,9 @@ void StressTensor() {
                 u3_cb = u3Con->elem(i, j, k - 1);
 
                 // friction stress
-                sigm13->elem(i, j, k)=VIS*(u1_c - u1_cb)/dx3;
-                sigm23->elem(i, j, k)=VIS*(u2_c - u2_cb)/dx3;
-                sigm33->elem(i, j, k)=VIS*(u3_c - u3_cb)/dx3;
+                sigm13->elem(i, j, k) = VIS * (u1_c - u1_cb) / dx3;
+                sigm23->elem(i, j, k) = VIS * (u2_c - u2_cb) / dx3;
+                sigm33->elem(i, j, k) = VIS * (u3_c - u3_cb) / dx3;
             }
         }
     }
@@ -686,35 +613,42 @@ void StressTensor() {
     double ds1, ds2, ds3;
 
     // area of the face perpendicuar to x1
-    ds1 = dx2*dx3;
-    ds2 = dx1*dx3;
-    ds3 = dx1*dx2;
+    ds1 = dx2 * dx3;
+    ds2 = dx1 * dx3;
+    ds3 = dx1 * dx2;
 
     for (int i = 1; i < n1; ++i) {
         for (int j = 1; j < n2; ++j) {
             for (int k = 1; k < n3; ++k) {
                 // friction forces
-                f1->elem(i, j, k) =
-                        (sigm11->elem(i + 1, j, k) - sigm11->elem(i, j, k)) * ds1 +
-                                (sigm12->elem(i, j + 1, k) - sigm12->elem(i, j, k)) * ds2 +
-                                (sigm13->elem(i, j, k + 1) - sigm13->elem(i, j, k)) * ds3;
+                if (condition->elem(i, j, k) == 0) {
+                    f1->elem(i, j, k) =
+                            (sigm11->elem(i + 1, j, k) - sigm11->elem(i, j, k)) * ds1 +
+                            (sigm12->elem(i, j + 1, k) - sigm12->elem(i, j, k)) * ds2 +
+                            (sigm13->elem(i, j, k + 1) - sigm13->elem(i, j, k)) * ds3;
 
-                f2->elem(i, j, k) =
-                        (sigm21->elem(i + 1, j, k) - sigm21->elem(i, j, k)) * ds1 +
-                                (sigm22->elem(i, j + 1, k) - sigm22->elem(i, j, k)) * ds2 +
-                                (sigm23->elem(i, j, k + 1) - sigm23->elem(i, j, k)) * ds3;
+                    f2->elem(i, j, k) =
+                            (sigm21->elem(i + 1, j, k) - sigm21->elem(i, j, k)) * ds1 +
+                            (sigm22->elem(i, j + 1, k) - sigm22->elem(i, j, k)) * ds2 +
+                            (sigm23->elem(i, j, k + 1) - sigm23->elem(i, j, k)) * ds3;
 
-                f3->elem(i, j, k) =
-                        (sigm31->elem(i + 1, j, k) - sigm31->elem(i, j, k)) * ds1 +
-                                (sigm32->elem(i, j + 1, k) - sigm32->elem(i, j, k)) * ds2 +
-                                (sigm33->elem(i, j, k + 1) - sigm33->elem(i, j, k)) * ds3;
+                    f3->elem(i, j, k) =
+                            (sigm31->elem(i + 1, j, k) - sigm31->elem(i, j, k)) * ds1 +
+                            (sigm32->elem(i, j + 1, k) - sigm32->elem(i, j, k)) * ds2 +
+                            (sigm33->elem(i, j, k + 1) - sigm33->elem(i, j, k)) * ds3;
+                } else {
+                    f1->elem(i, j, k) = 0.;
+                    f2->elem(i, j, k) = 0.;
+                    f3->elem(i, j, k) = 0.;
+                }
             }
+
         }
     }
 }
 
 void UseForces() {
-    double dvc, ro_c, ro_cn;
+    double dvc, ro_cn;
 
     // cell volume
     dvc = dx1*dx2*dx3;
@@ -722,12 +656,11 @@ void UseForces() {
     for (int i = 1; i < n1; ++i) {
         for (int j = 1; j < n2; ++j) {
             for (int k = 1; k < n3; ++k) {
-                ro_c = roCon->elem(i, j, k);
                 ro_cn = ronCon->elem(i, j, k);
 
-                u1nCon->elem(i, j, k) = (ro_c*dvc*u1nCon->elem(i, j, k) + 0.5*dt*f1->elem(i, j, k))/(dvc*ro_cn);
-                u2nCon->elem(i, j, k) = (ro_c*dvc*u2nCon->elem(i, j, k) + 0.5*dt*f2->elem(i, j, k))/(dvc*ro_cn);
-                u3nCon->elem(i, j, k) = (ro_c*dvc*u3nCon->elem(i, j, k) + 0.5*dt*f3->elem(i, j, k))/(dvc*ro_cn);
+                u1nCon->elem(i, j, k) = (ro_cn*dvc*u1nCon->elem(i, j, k) + 0.5*dt*f1->elem(i, j, k))/(dvc*ro_cn);
+                u2nCon->elem(i, j, k) = (ro_cn*dvc*u2nCon->elem(i, j, k) + 0.5*dt*f2->elem(i, j, k))/(dvc*ro_cn);
+                u3nCon->elem(i, j, k) = (ro_cn*dvc*u3nCon->elem(i, j, k) + 0.5*dt*f3->elem(i, j, k))/(dvc*ro_cn);
             }
         }
     }
@@ -894,100 +827,127 @@ void Phase2() {
             // boundary conditions along the X1 axis
             // assignment of boundary invatiants and add them to the buffer arrays
 
-            // periodicity conditions
-            rBuf[1] = rBuf[n1];
-            tfBuf[1] = tfBuf[n1];
-            u2fBuf[1] = u2fBuf[n1];
-            u3fBuf[1] = u3fBuf[n1];
+            // boundary conditions along the X2 axis
+            // assignment of boundary invatiants and add them to the buffer arrays
 
-            // periodicity conditions
-            qBuf[n1] = qBuf[1];
-            tbBuf[n1] = tbBuf[1];
-            u2bBuf[n1] = u2bBuf[1];
-            u3bBuf[n1] = u3bBuf[1];
+            int _i = 1, _n1 = n1;
 
-            // no-slip conditions
-            // i == 1
-//            qn = qBuf[1];
-//            un = 0;
-//            pn = -qn*sound*ro0_g;
-//            ro_n = ro0_g + pn / (sound*sound);
-//
-//            tn = t0;
-//            u2_n = 0;
-//            u3_n = 0;
-//
-//            p1->elem(1, j, k) = pn;
-//            u11->elem(1, j, k) = un;
-//            ro1->elem(1, j, k) = ro_n;
-//            t1->elem(1, j, k) = tn;
-//            u21->elem(1, j, k) = u2_n;
-//            u31->elem(1, j, k) = u3_n;
-//
-//            // i == n1
-//            rn = rBuf[n1];
-//
-//            un = 0;
-//            pn = rn*sound*ro0_g;
-//            ro_n = ro0_g + pn / (sound*sound);
-//
-//            tn = t0;
-//            u2_n = 0;
-//            u3_n = 0;
-//
-//            p1->elem(n1, j, k) = pn;
-//            u11->elem(n1, j, k) = un;
-//            ro1->elem(n1, j, k) = ro_n;
-//            t1->elem(n1, j, k) = tn;
-//            u21->elem(n1, j, k) = u2_n;
-//            u31->elem(n1, j, k) = u3_n;
+            if (x2Period) {
+                // periodicity conditions
+                rBuf[1] = rBuf[n1];
+                tfBuf[1] = tfBuf[n1];
+                u2fBuf[1] = u2fBuf[n1];
+                u3fBuf[1] = u3fBuf[n1];
+
+                // periodicity conditions
+                qBuf[n1] = qBuf[1];
+                tbBuf[n1] = tbBuf[1];
+                u2bBuf[n1] = u2bBuf[1];
+                u3bBuf[n1] = u3bBuf[1];
+            } else {
+                // no-slip
+                // i == 1
+                qn = qBuf[1];
+
+                pn = -qn * sound * ro0_g;
+                un = 0.;
+
+                ro_n = ro0_g + pn / (sound * sound);
+
+                tn = t0;
+                u2_n = 0;
+                u3_n = 0;
+
+                p2->elem(1, j, k) = pn;
+                u22->elem(1, j, k) = un;
+                ro2->elem(1, j, k) = ro_n;
+                t2->elem(1, j, k) = tn;
+                u12->elem(1, j, k) = u2_n;
+                u32->elem(1, j, k) = u3_n;
+
+                // j == n2
+                rn = rBuf[n2];
+
+                pn = rn * sound * ro0_g;
+                un = 0.;
+
+                ro_n = ro0_g + pn / (sound * sound);
+
+                tn = t0;
+                u2_n = 0.;
+                u3_n = 0.;
+
+                p2->elem(n2, j, k) = pn;
+                u22->elem(n2, j, k) = un;
+                ro2->elem(n2, j, k) = ro_n;
+                t2->elem(n2, j, k) = tn;
+                u12->elem(n2, j, k) = u2_n;
+                u32->elem(n2, j, k) = u3_n;
+
+                ++_i;
+                --_n1;
+            }
 
             // the flow variables calculations
-            for (int i = 1; i <= n1; i++)
+            for (int i = _i; i <= _n1; i++)
             {
-                rn = rBuf[i];
-                qn = qBuf[i];
+                if (condition->elem(i - 1, j , k) == 0 && condition->elem(i, j, k) == 0) {
+                    rn = rBuf[i];
+                    qn = qBuf[i];
 
-                pn = (rn - qn)*sound*ro0_g / 2;
-                un = (rn + qn) / 2;
+                    un = (rn + qn) / 2;
+                    pn = (rn - qn)*sound*ro0_g / 2;
+                    ro_n = ro0_g + pn / (sound*sound);
 
-                ro_n = ro0_g + pn / (sound*sound);
+                    ucf = u1nCon->elem(i, j, k);
+                    ucb = u1nCon->elem(i - 1, j, k);
 
-                ucf = u1nCon->elem(i, j, k);
-                ucb = u1nCon->elem(i - 1, j, k);
-
-                if (ucf >= 0 && ucb >= 0)
-                {
-                    tn = tfBuf[i];
-                    u2_n = u2fBuf[i];
-                    u3_n = u3fBuf[i];
-                }
-                else if (ucf <= 0 && ucb <= 0)
-                {
-                    tn = tbBuf[i];
-                    u2_n = u2bBuf[i];
-                    u3_n = u3bBuf[i];
-                }
-                else if (ucb >= 0 && ucf <= 0)
-                {
-                    if (ucb > -ucf)
-                    {
+                    if (ucf >= 0 && ucb >= 0) {
                         tn = tfBuf[i];
                         u2_n = u2fBuf[i];
                         u3_n = u3fBuf[i];
                     }
-                    else
-                    {
+                    else if (ucf <= 0 && ucb <= 0) {
                         tn = tbBuf[i];
                         u2_n = u2bBuf[i];
                         u3_n = u3bBuf[i];
                     }
-                }
-                else if (ucb <= 0 && ucf >= 0)
-                {
-                    tn = tnCon->elem(i, j, k) + tnCon->elem(i - 1, j, k) - t1->elem(i, j, k);
-                    u2_n = u2nCon->elem(i, j, k) + u2nCon->elem(i - 1, j, k) - u21->elem(i, j, k);
-                    u3_n = u3nCon->elem(i, j, k) + u3nCon->elem(i - 1, j, k) - u31->elem(i, j, k);
+                    else if (ucb >= 0 && ucf <= 0) {
+                        if (ucb > -ucf) {
+                            tn = tfBuf[i];
+                            u2_n = u2fBuf[i];
+                            u3_n = u3fBuf[i];
+                        }
+                        else {
+                            tn = tbBuf[i];
+                            u2_n = u2bBuf[i];
+                            u3_n = u3bBuf[i];
+                        }
+                    }
+                    else {
+                        tn = tnCon->elem(i, j, k) + tnCon->elem(i - 1, j, k) - t1->elem(i, j, k);
+                        u2_n = u2nCon->elem(i, j, k) + u2nCon->elem(i - 1, j, k) - u21->elem(i, j, k);
+                        u3_n = u3nCon->elem(i, j, k) + u3nCon->elem(i - 1, j, k) - u31->elem(i, j, k);
+                    }
+                } else {
+                    un = 0.;
+
+                    if (condition->elem(i - 1, j , k) == 1 && condition->elem(i, j, k) == 0) {
+                        rn = 0.;
+                        qn = qBuf[i];
+                    } else if (condition->elem(i - 1, j , k) == 0 && condition->elem(i, j, k) == 1) {
+                        rn = rBuf[i];
+                        qn = 0.;
+                    } else {
+                        rn = 0.;
+                        qn = 0.;
+                    }
+
+                    pn = (rn - qn)*sound*ro0_g / 2;
+                    ro_n = ro0_g + pn / (sound*sound);
+                    tn = t0;
+                    u2_n = 0.;
+                    u3_n = 0.;
                 }
 
                 p1->elem(i, j, k) = pn;
@@ -1151,104 +1111,125 @@ void Phase2() {
             // boundary conditions along the X2 axis
             // assignment of boundary invatiants and add them to the buffer arrays
 
-            // periodicity conditions
-//            rBuf[1] = rBuf[n2];
-//            tfBuf[1] = tfBuf[n2];
-//            u2fBuf[1] = u2fBuf[n2];
-//            u3fBuf[1] = u3fBuf[n2];
+            int _j = 1, _n2 = n2;
 
-            // periodicity conditions
-//            qBuf[n2] = qBuf[1];
-//            tbBuf[n2] = tbBuf[1];
-//            u2bBuf[n2] = u2bBuf[1];
-//            u3bBuf[n2] = u3bBuf[1];
+            if (x2Period) {
+                // periodicity conditions
+                rBuf[1] = rBuf[n2];
+                tfBuf[1] = tfBuf[n2];
+                u2fBuf[1] = u2fBuf[n2];
+                u3fBuf[1] = u3fBuf[n2];
 
-            // no-slip
-            // j == 1
-            qn = qBuf[1];
+                // periodicity conditions
+                qBuf[n2] = qBuf[1];
+                tbBuf[n2] = tbBuf[1];
+                u2bBuf[n2] = u2bBuf[1];
+                u3bBuf[n2] = u3bBuf[1];
+            } else {
+                // no-slip
+                // j == 1
+                qn = qBuf[1];
 
-            pn = -qn*sound*ro0_g;
-            un = 0.;
+                pn = -qn * sound * ro0_g;
+                un = 0.;
 
-            ro_n = ro0_g + pn / (sound*sound);
+                ro_n = ro0_g + pn / (sound * sound);
 
-            tn = t0;
-            u1_n = 0;
-            u3_n = 0;
+                tn = t0;
+                u1_n = 0;
+                u3_n = 0;
 
-            p2->elem(i, 1, k) = pn;
-            u22->elem(i, 1, k) = un;
-            ro2->elem(i, 1, k) = ro_n;
-            t2->elem(i, 1, k) = tn;
-            u12->elem(i, 1, k) = u1_n;
-            u32->elem(i, 1, k) = u3_n;
+                p2->elem(i, 1, k) = pn;
+                u22->elem(i, 1, k) = un;
+                ro2->elem(i, 1, k) = ro_n;
+                t2->elem(i, 1, k) = tn;
+                u12->elem(i, 1, k) = u1_n;
+                u32->elem(i, 1, k) = u3_n;
 
-            // j == n2
-            rn = rBuf[n2];
+                // j == n2
+                rn = rBuf[n2];
 
-            pn = rn*sound*ro0_g;
-            un = 0.;
+                pn = rn * sound * ro0_g;
+                un = 0.;
 
-            ro_n = ro0_g + pn / (sound*sound);
+                ro_n = ro0_g + pn / (sound * sound);
 
-            tn = t0;
-            u1_n = 0.;
-            u3_n = 0.;
+                tn = t0;
+                u1_n = 0.;
+                u3_n = 0.;
 
-            p2->elem(i, n2, k) = pn;
-            u22->elem(i, n2, k) = un;
-            ro2->elem(i, n2, k) = ro_n;
-            t2->elem(i, n2, k) = tn;
-            u12->elem(i, n2, k) = u1_n;
-            u32->elem(i, n2, k) = u3_n;
+                p2->elem(i, n2, k) = pn;
+                u22->elem(i, n2, k) = un;
+                ro2->elem(i, n2, k) = ro_n;
+                t2->elem(i, n2, k) = tn;
+                u12->elem(i, n2, k) = u1_n;
+                u32->elem(i, n2, k) = u3_n;
+
+                ++_j;
+                --_n2;
+            }
 
             // the flow variables calculations
-            for (int j = 2; j < n2; j++)
+            for (int j = _j; j <= _n2; j++)
             {
-                rn = rBuf[j];
-                qn = qBuf[j];
+                if (condition->elem(i - 1, j , k) == 0 && condition->elem(i, j, k) == 0) {
+                    rn = rBuf[j];
+                    qn = qBuf[j];
 
-                pn = (rn - qn)*sound*ro0_g / 2;
-                un = (rn + qn) / 2;
+                    un = (rn + qn) / 2;
 
-                ro_n = ro0_g + pn / (sound*sound);
+                    pn = (rn - qn) * sound * ro0_g / 2;
+                    ro_n = ro0_g + pn / (sound * sound);
 
-                ucf = u2nCon->elem(i, j, k);
-                ucb = u2nCon->elem(i, j - 1, k);
+                    ucf = u2nCon->elem(i, j, k);
+                    ucb = u2nCon->elem(i, j - 1, k);
 
-                if (ucf >= 0 && ucb >= 0)
-                {
-                    tn = tfBuf[j];
-                    u1_n = u2fBuf[j];
-                    u3_n = u3fBuf[j];
-                }
-                else if (ucf <= 0 && ucb <= 0)
-                {
-                    tn = tbBuf[j];
-                    u1_n = u2bBuf[j];
-                    u3_n = u3bBuf[j];
-                }
-                else if (ucb >= 0 && ucf <= 0)
-                {
-                    if (ucb > -ucf)
-                    {
+                    if (ucf >= 0 && ucb >= 0) {
                         tn = tfBuf[j];
                         u1_n = u2fBuf[j];
                         u3_n = u3fBuf[j];
                     }
-                    else
-                    {
+                    else if (ucf <= 0 && ucb <= 0) {
                         tn = tbBuf[j];
                         u1_n = u2bBuf[j];
                         u3_n = u3bBuf[j];
                     }
-                }
-                else
-                if (ucb <= 0 && ucf >= 0)
-                {
-                    tn = tnCon->elem(i, j, k) + tnCon->elem(i, j - 1, k) - t2->elem(i, j, k);
-                    u1_n = u1nCon->elem(i, j, k) + u1nCon->elem(i, j - 1, k) - u12->elem(i, j, k);
-                    u3_n = u3nCon->elem(i, j, k) + u3nCon->elem(i, j - 1, k) - u32->elem(i, j, k);
+                    else if (ucb >= 0 && ucf <= 0) {
+                        if (ucb > -ucf) {
+                            tn = tfBuf[j];
+                            u1_n = u2fBuf[j];
+                            u3_n = u3fBuf[j];
+                        }
+                        else {
+                            tn = tbBuf[j];
+                            u1_n = u2bBuf[j];
+                            u3_n = u3bBuf[j];
+                        }
+                    }
+                    else {
+                        tn = tnCon->elem(i, j, k) + tnCon->elem(i, j - 1, k) - t2->elem(i, j, k);
+                        u1_n = u1nCon->elem(i, j, k) + u1nCon->elem(i, j - 1, k) - u12->elem(i, j, k);
+                        u3_n = u3nCon->elem(i, j, k) + u3nCon->elem(i, j - 1, k) - u32->elem(i, j, k);
+                    }
+                } else {
+                    un = 0.;
+
+                    if (condition->elem(i, j -1, k) == 1 && condition->elem(i, j, k) == 0) {
+                        rn = 0.;
+                        qn = qBuf[i];
+                    } else if (condition->elem(i, j -1, k) == 0 && condition->elem(i, j, k) == 1) {
+                        rn = rBuf[i];
+                        qn = 0.;
+                    } else {
+                        rn = 0.;
+                        qn = 0.;
+                    }
+
+                    pn = (rn - qn)*sound*ro0_g / 2;
+                    ro_n = ro0_g + pn / (sound*sound);
+                    tn = t0;
+                    u1_n = 0.;
+                    u3_n = 0.;
                 }
 
                 p2->elem(i, j, k) = pn;
@@ -1407,102 +1388,122 @@ void Phase2() {
             // boundary conditions along the X3 axis
             // assignment of boundary invatiants and add them to the buffer arrays
 
-            // periodicity conditions
-//            rBuf[1] = rBuf[n3];
-//            tfBuf[1] = tfBuf[n3];
-//            u2fBuf[1] = u2fBuf[n3];
-//            u3fBuf[1] = u3fBuf[n3];
+            int _k = 1, _n3 = n3;
 
-            // periodicity conditions
-//            qBuf[n3] = qBuf[1];
-//            tbBuf[n3] = tbBuf[1];
-//            u2bBuf[n3] = u2bBuf[1];
-//            u3bBuf[n3] = u3bBuf[1];
+            if (x3Period) {
+                // periodicity conditions
+                rBuf[1] = rBuf[n3];
+                tfBuf[1] = tfBuf[n3];
+                u2fBuf[1] = u2fBuf[n3];
+                u3fBuf[1] = u3fBuf[n3];
 
-            // no-slip conditions
-            // k == 1;
-			qn = qBuf[1];
-			un = 0.;
-			pn = -qn*sound*ro0_g;
-			ro_n = ro0_g + pn / (sound*sound);
+                // periodicity conditions
+                qBuf[n3] = qBuf[1];
+                tbBuf[n3] = tbBuf[1];
+                u2bBuf[n3] = u2bBuf[1];
+                u3bBuf[n3] = u3bBuf[1];
+            } else {
+                // no-slip conditions
+                // k == 1;
+                qn = qBuf[1];
+                un = 0.;
+                pn = -qn * sound * ro0_g;
+                ro_n = ro0_g + pn / (sound * sound);
 
-			tn = t0;
-			u1_n = 0.;
-			u2_n = 0.;
+                tn = t0;
+                u1_n = 0.;
+                u2_n = 0.;
 
-			p3->elem(i, j, 1) = pn;
-			u33->elem(i, j, 1) = un;
-			ro3->elem(i, j, 1) = ro_n;
-			t3->elem(i, j, 1) = tn;
-			u13->elem(i, j, 1) = u1_n;
-			u23->elem(i, j, 1) = u2_n;
+                p3->elem(i, j, 1) = pn;
+                u33->elem(i, j, 1) = un;
+                ro3->elem(i, j, 1) = ro_n;
+                t3->elem(i, j, 1) = tn;
+                u13->elem(i, j, 1) = u1_n;
+                u23->elem(i, j, 1) = u2_n;
 
 
-			// k == n3
-			rn = rBuf[n3];
+                // k == n3
+                rn = rBuf[n3];
 
-			un = 0.;
-			pn = rn*sound*ro0_g;
-			ro_n = ro0_g + pn / (sound*sound);
+                un = 0.;
+                pn = rn * sound * ro0_g;
+                ro_n = ro0_g + pn / (sound * sound);
 
-			tn = t0;
-			u1_n = 0.;
-			u2_n = 0.;
+                tn = t0;
+                u1_n = 0.;
+                u2_n = 0.;
 
-			p3->elem(i, j, n3) = pn;
-			u33->elem(i, j, n3) = un;
-			ro3->elem(i, j, n3) = ro_n;
-			t1->elem(i, j, n3) = tn;
-			u13->elem(i, j, n3) = u1_n;
-			u23->elem(i, j, n3) = u2_n;
+                p3->elem(i, j, n3) = pn;
+                u33->elem(i, j, n3) = un;
+                ro3->elem(i, j, n3) = ro_n;
+                t1->elem(i, j, n3) = tn;
+                u13->elem(i, j, n3) = u1_n;
+                u23->elem(i, j, n3) = u2_n;
 
+                ++_k;
+                --_n3;
+            }
             // the flow variables calculations
-            for (int k = 2; k < n3; k++)
+            for (int k = _k; k <= _n3; k++)
             {
-                rn = rBuf[k];
-                qn = qBuf[k];
+                if (condition->elem(i - 1, j , k) == 0 && condition->elem(i, j, k) == 0) {
+                    rn = rBuf[k];
+                    qn = qBuf[k];
 
-                pn = (rn - qn)*sound*ro0_g / 2;
-                un = (rn + qn) / 2;
+                    pn = (rn - qn) * sound * ro0_g / 2;
+                    un = (rn + qn) / 2;
 
-                ro_n = ro0_g + pn / (sound*sound);
+                    ro_n = ro0_g + pn / (sound * sound);
 
-                ucf = u3nCon->elem(i, j, k);
-                ucb = u3nCon->elem(i, j, k - 1);
+                    ucf = u3nCon->elem(i, j, k);
+                    ucb = u3nCon->elem(i, j, k - 1);
 
-                if (ucf >= 0 && ucb >= 0)
-                {
-                    tn = tfBuf[k];
-                    u1_n = u2fBuf[k];
-                    u2_n = u3fBuf[k];
-                }
-                else if (ucf <= 0 && ucb <= 0)
-                {
-                    tn = tbBuf[k];
-                    u1_n = u2bBuf[k];
-                    u2_n = u3bBuf[k];
-                }
-                else if (ucb >= 0 && ucf <= 0)
-                {
-                    if (ucb > -ucf)
-                    {
+                    if (ucf >= 0 && ucb >= 0) {
                         tn = tfBuf[k];
                         u1_n = u2fBuf[k];
                         u2_n = u3fBuf[k];
                     }
-                    else
-                    {
+                    else if (ucf <= 0 && ucb <= 0) {
                         tn = tbBuf[k];
                         u1_n = u2bBuf[k];
                         u2_n = u3bBuf[k];
                     }
-                }
-                else
-                if (ucb <= 0 && ucf >= 0)
-                {
-                    tn = tnCon->elem(i, j, k) + tnCon->elem(i, j, k - 1) - t3->elem(i, j, k);
-                    u1_n = u1nCon->elem(i, j, k) + u1nCon->elem(i, j, k - 1) - u13->elem(i, j, k);
-                    u2_n = u2nCon->elem(i, j, k) + u2nCon->elem(i, j, k - 1) - u23->elem(i, j, k);
+                    else if (ucb >= 0 && ucf <= 0) {
+                        if (ucb > -ucf) {
+                            tn = tfBuf[k];
+                            u1_n = u2fBuf[k];
+                            u2_n = u3fBuf[k];
+                        }
+                        else {
+                            tn = tbBuf[k];
+                            u1_n = u2bBuf[k];
+                            u2_n = u3bBuf[k];
+                        }
+                    }
+                    else {
+                        tn = tnCon->elem(i, j, k) + tnCon->elem(i, j, k - 1) - t3->elem(i, j, k);
+                        u1_n = u1nCon->elem(i, j, k) + u1nCon->elem(i, j, k - 1) - u13->elem(i, j, k);
+                        u2_n = u2nCon->elem(i, j, k) + u2nCon->elem(i, j, k - 1) - u23->elem(i, j, k);
+                    }
+                } else {
+                    un = 0.;
+
+                    if (condition->elem(i, j, k - 1) == 1 && condition->elem(i, j, k) == 0) {
+                        rn = 0.;
+                        qn = qBuf[i];
+                    } else if (condition->elem(i, j, k - 1) == 0 && condition->elem(i, j, k) == 1) {
+                        rn = rBuf[i];
+                        qn = 0.;
+                    } else {
+                        rn = 0.;
+                        qn = 0.;
+                    }
+
+                    pn = (rn - qn)*sound*ro0_g / 2;
+                    ro_n = ro0_g + pn / (sound*sound);
+                    tn = t0;
+                    u1_n = 0.;
+                    u2_n = 0.;
                 }
 
                 p3->elem(i, j, k) = pn;
@@ -1512,36 +1513,6 @@ void Phase2() {
                 u13->elem(i, j, k) = u1_n;
                 u23->elem(i, j, k) = u2_n;
             }
-
-            // inlet conditions
-            /*qn = qBuf[1];
-            rn = u3Inlet + (ronCon->elem(i, j, 1) - ro0_g)*sound / ro0_g;
-            un = (rn + qn) / 2;
-            pn = (rn - qn)*sound*ro0_g / 2;
-            ro_n = ro0_g + pn / sound / sound;
-            u2_n = u2Inlet;
-            u1_n = u1Inlet;
-            tn = tInlet;
-            p3->elem(i, j, 1) = pn;
-            u33->elem(i, j, 1) = un;
-            ro3->elem(i, j, 1) = ro_n;
-            t3->elem(i, j, 1) = tn;
-            u23->elem(i, j, 1) = u2_n;
-            u13->elem(i, j, 1) = u1_n;*/
-
-            // outlet conditions
-            /*rn = rBuf[n3];
-            pn = pOutlet;
-            un = rn - pn / ro0_g / sound;
-            tn = tfBuf[n3];
-            u2_n = u2fBuf[n3];
-            u1_n = u3fBuf[n3];
-            p3->elem(i, j, n3) = pn;
-            u33->elem(i, j, n3) = un;
-            ro3->elem(i, j, n3) = ro_n;
-            t3->elem(i, j, n3) = tn;
-            u23->elem(i, j, n3) = u2_n;
-            u13->elem(i, j, n3) = u1_n;*/
         }
     }
 }
@@ -1562,6 +1533,8 @@ void FreeMemory() {
     delete u2nCon;
     delete u3nCon;
     delete tnCon;
+
+    delete condition;
 
     delete ro1;
     delete t1;
@@ -1610,93 +1583,127 @@ void FreeMemory() {
     delete[] u3bBuf;
 }
 
+void WriteEnergy() {
+    char filename[] = "C:\\Users\\stopper\\Desktop\\out\\energy.txt";
+    double energy = 0;
+    for(int i = 1; i < n1; i++) {
+        for(int j = 1; j < n2; j++) {
+            for(int k = 1; k < n3; k++) {
+                energy += u1Con->elem(i, j, k)*u1Con->elem(i, j, k) +
+                          u2Con->elem(i, j, k)*u2Con->elem(i, j, k) +
+                          u3Con->elem(i, j, k)*u3Con->elem(i, j, k)/2;
+            }
+        }
+    }
+
+    double volume = (x3_t - x3_b)*(x2_n - x2_s)*(x1_e - x1_w);
+    energy *= volume;
+    FILE *fd = fopen(filename, "a");
+    fprintf(fd, "(%f; %f) ", TIME, energy);
+    fclose(fd);
+}
+
 void WriteDataParaView() {
     char filename[100];
+    double v;
 
     sprintf(filename, "C:\\Users\\Alex\\Desktop\\IM\\ark-cpp\\out\\out_%d.vtk", nStep);
     //sprintf_s(filename, 50, "out_%d.vtk", nStep);
 
-    FILE *fd = fopen(filename, "w");
+    FILE *fd = fopen(filename, "wb");
 //	FILE *fd;
 //	fopen_s(&fd, filename, "w");
 
-    fprintf(fd, "# vtk DataFile Version 3.0\nvtk output\nASCII\n");
+    fprintf(fd, "# vtk DataFile Version 3.0\nvtk output\nBINARY\n");
     fprintf(fd, "DATASET RECTILINEAR_GRID\nDIMENSIONS %d %d %d", n1, n2, n3);
 
-    fprintf(fd, "\nX_COORDINATES %d float\n", n1);
-    for (int i = 1; i <= n1; i++)
-    {
-        fprintf(fd, "%f ", x1[i]);
+    fprintf(fd, "\nX_COORDINATES %d double\n", n1);
+    for (int i = 1; i <= n1; ++i) {
+        v = x1[i];
+        swap8(&v);
+        fwrite(&v, sizeof(double), (size_t) 1, fd);
     }
 
-    fprintf(fd, "\nY_COORDINATES %d float\n", n2);
-    for (int j = 1; j <= n2; j++)
-    {
-        fprintf(fd, "%f ", x2[j]);
+    fprintf(fd, "\nY_COORDINATES %d double\n", n2);
+    for (int j = 1; j <= n2; ++j) {
+        v = x2[j];
+        swap8(&v);
+        fwrite(&v, sizeof(double), (size_t) 1, fd);
     }
 
-    fprintf(fd, "\nZ_COORDINATES %d float\n", n3);
-    for (int k = 1; k <= n3; k++)
-    {
-        fprintf(fd, "%f ", x3[k]);
+    fprintf(fd, "\nZ_COORDINATES %d double\n", n3);
+    for (int k = 1; k <= n3; ++k) {
+        v = x3[k];
+        swap8(&v);
+        fwrite(&v, sizeof(double), (size_t) 1, fd);
     }
 
-    fprintf(fd, "\nCELL_DATA %d\nscalars U1 float\nLOOKUP_TABLE default\n", (n1-1)*(n2-1)*(n3-1));
+    fprintf(fd, "\nCELL_DATA %d\nscalars U1 double\nLOOKUP_TABLE default\n", (n1-1)*(n2-1)*(n3-1));
     for (int k = 1; k < n3; k++)
     {
         for (int j = 1; j < n2; j++)
         {
             for (int i = 1; i < n1; i++)
             {
-                fprintf(fd, "%f ", u1nCon->elem(i, j, k));
+                v = u1nCon->elem(i, j, k);
+                swap8(&v);
+                fwrite(&v, sizeof(double), (size_t) 1, fd);
             }
         }
     }
 
-    fprintf(fd, "\nscalars U2 float\nLOOKUP_TABLE default\n");
+    fprintf(fd, "\nscalars U2 double\nLOOKUP_TABLE default\n");
     for (int k = 1; k < n3; k++)
     {
         for (int j = 1; j < n2; j++)
         {
             for (int i = 1; i < n1; i++)
             {
-                fprintf(fd, "%f ", u2nCon->elem(i, j, k));
+                v = u2nCon->elem(i, j, k);
+                swap8(&v);
+                fwrite(&v, sizeof(double), (size_t) 1, fd);
             }
         }
     }
 
-    fprintf(fd, "\nscalars U3 float\nLOOKUP_TABLE default\n");
+    fprintf(fd, "\nscalars U3 double\nLOOKUP_TABLE default\n");
     for (int k = 1; k < n3; k++)
     {
         for (int j = 1; j < n2; j++)
         {
             for (int i = 1; i < n1; i++)
             {
-                fprintf(fd, "%f ", u3nCon->elem(i, j, k));
+                v = u3nCon->elem(i, j, k);
+                swap8(&v);
+                fwrite(&v, sizeof(double), (size_t) 1, fd);
             }
         }
     }
 
-    fprintf(fd, "\nscalars PC float\nLOOKUP_TABLE default\n");
+    fprintf(fd, "\nscalars PC double\nLOOKUP_TABLE default\n");
     for (int k = 1; k < n3; k++)
     {
         for (int j = 1; j < n2; j++)
         {
             for (int i = 1; i < n1; i++)
             {
-                fprintf(fd, "%f ", ronCon->elem(i, j, k));
+                v = ronCon->elem(i, j, k);
+                swap8(&v);
+                fwrite(&v, sizeof(double), (size_t) 1, fd);
             }
         }
     }
 
-    fprintf(fd, "\nscalars TC float\nLOOKUP_TABLE default\n");
+    fprintf(fd, "\nscalars TC double\nLOOKUP_TABLE default\n");
     for (int k = 1; k < n3; k++)
     {
         for (int j = 1; j < n2; j++)
         {
             for (int i = 1; i < n1; i++)
             {
-                fprintf(fd, "%f ", tnCon->elem(i, j, k));
+                v = tnCon->elem(i, j, k);
+                swap8(&v);
+                fwrite(&v, sizeof(double), (size_t) 1, fd);
             }
         }
     }
@@ -1762,4 +1769,21 @@ double max3d(double x1, double x2, double x3) {
     x1 = x1 < x2 ? x2 : x1;
     x1 = x1 < x3 ? x3 : x1;
     return x1;
+}
+
+static void swap8(void *v)
+{
+    if (needSwap) {
+        char    in[8], out[8];
+        memcpy(in, v, 8);
+        out[0] = in[7];
+        out[1] = in[6];
+        out[2] = in[5];
+        out[3] = in[4];
+        out[4] = in[3];
+        out[5] = in[2];
+        out[6] = in[1];
+        out[7] = in[0];
+        memcpy(v, out, 8);
+    }
 }

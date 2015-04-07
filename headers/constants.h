@@ -25,6 +25,7 @@
 
 double sound, ro0_g, ro0_s, dt, VIS, u10, u20, u30, t0, TIME, CFL, pOutlet;
 double u3Inlet, u2Inlet, u1Inlet, tInlet;
+bool x1Period, x2Period, x3Period, needSwap;
 
 #ifndef M_PI
 #define M_PI 3.1415926535897932384626433832795
