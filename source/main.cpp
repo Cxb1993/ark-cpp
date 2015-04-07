@@ -16,6 +16,7 @@ void StressTensor();
 void UseForces();
 void WriteDataParaView();
 void FreeMemory();
+void WriteEnergy();
 
 double min3d(double, double, double);
 double max3d(double, double, double);
@@ -47,6 +48,7 @@ int main(int argc, char** argv) {
 
         if (nStep % nPrint == 0)
         {
+            WriteEnergy();
             WriteDataParaView();
             printf("step: %d dt:%E time:%8.4f\n", nStep, dt, TIME);
         }
@@ -98,7 +100,7 @@ void Input() {
     x3_t = 0.1;
 
     // total number of steps
-    nStop = 50000;
+    nStop = 5000;
     // print interval
     nPrint = 100;
 
@@ -842,10 +844,10 @@ void Phase2() {
             u3fBuf[1] = 0.;
 
             // periodicity conditions
-//            qBuf[n1] = 5./6.;
-//            tbBuf[n1] = t0;
-//            u2bBuf[n1] = 0.;
-//            u3bBuf[n1] = 0.;
+            qBuf[n1] = 5./6.;
+            tbBuf[n1] = t0;
+            u2bBuf[n1] = 0.;
+            u3bBuf[n1] = 0.;
 
             // no-slip conditions
             // i == 1
@@ -866,28 +868,28 @@ void Phase2() {
 //            u31->elem(1, j, k) = u3_n;
 //
 //            // i == n1
-            rn = rBuf[n1];
-
-            un = 2*u1nCon->elem(n1, j, k) - u11->elem(n1, j, k);
-            pn = (rn - un)*sound*ro0_g;
-            ro_n = ro0_g + pn / (sound*sound);
-
-            tn = t0;
-
-            if (u1nCon->elem(n1, j , k) < 0) {
-                u2_n = u21->elem(n1, j, k);
-                u3_n = u31->elem(n1, j, k);
-            } else {
-                u2_n = 0;
-                u3_n = 0;
-            }
-
-            p1->elem(n1, j, k) = pn;
-            u11->elem(n1, j, k) = un;
-            ro1->elem(n1, j, k) = ro_n;
-            t1->elem(n1, j, k) = tn;
-            u21->elem(n1, j, k) = u2_n;
-            u31->elem(n1, j, k) = u3_n;
+//            rn = rBuf[n1];
+//
+//            un = 2*u1nCon->elem(n1, j, k) - u11->elem(n1, j, k);
+//            pn = (rn - un)*sound*ro0_g;
+//            ro_n = ro0_g + pn / (sound*sound);
+//
+//            tn = t0;
+//
+//            if (u1nCon->elem(n1, j , k) < 0) {
+//                u2_n = u21->elem(n1, j, k);
+//                u3_n = u31->elem(n1, j, k);
+//            } else {
+//                u2_n = 0;
+//                u3_n = 0;
+//            }
+//
+//            p1->elem(n1, j, k) = pn;
+//            u11->elem(n1, j, k) = un;
+//            ro1->elem(n1, j, k) = ro_n;
+//            t1->elem(n1, j, k) = tn;
+//            u21->elem(n1, j, k) = u2_n;
+//            u31->elem(n1, j, k) = u3_n;
 
             // the flow variables calculations
             for (int i = 1; i <= n1; i++)
@@ -1582,6 +1584,26 @@ void FreeMemory() {
     delete[] u2bBuf;
     delete[] u3fBuf;
     delete[] u3bBuf;
+}
+
+void WriteEnergy() {
+    char filename[] = "C:\\Users\\Alex\\Desktop\\IM\\ark-cpp\\out\\energy.txt";
+    double energy = 0;
+    for(int i = 1; i < n1; i++) {
+        for(int j = 1; j < n2; j++) {
+            for(int k = 1; k < n3; k++) {
+                energy += u1Con->elem(i, j, k)*u1Con->elem(i, j, k) +
+                          u2Con->elem(i, j, k)*u2Con->elem(i, j, k) +
+                          u3Con->elem(i, j, k)*u3Con->elem(i, j, k)/2;
+            }
+        }
+    }
+
+    double volume = (x3_t - x3_b)*(x2_n - x2_s)*(x1_e - x1_w);
+    energy *= volume;
+    FILE *fd = fopen(filename, "a");
+    fprintf(fd, "(%f; %f) ", TIME, energy);
+    fclose(fd);
 }
 
 void WriteDataParaView() {
