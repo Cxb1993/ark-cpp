@@ -100,7 +100,7 @@ void Input() {
     x3_t = 0.1;
 
     // total number of steps
-    nStop = 5000;
+    nStop = 50000;
     // print interval
     nPrint = 100;
 
@@ -1175,7 +1175,7 @@ void Phase2() {
             // the flow variables calculations
             for (int j = _j; j <= _n2; j++)
             {
-                if (condition->elem(i - 1, j , k) == 0 && condition->elem(i, j, k) == 0) {
+                if (condition->elem(i, j - 1, k) == 0 && condition->elem(i, j, k) == 0) {
                     rn = rBuf[j];
                     qn = qBuf[j];
 
@@ -1219,9 +1219,9 @@ void Phase2() {
 
                     if (condition->elem(i, j -1, k) == 1 && condition->elem(i, j, k) == 0) {
                         rn = 0.;
-                        qn = qBuf[i];
+                        qn = qBuf[j];
                     } else if (condition->elem(i, j -1, k) == 0 && condition->elem(i, j, k) == 1) {
-                        rn = rBuf[i];
+                        rn = rBuf[j];
                         qn = 0.;
                     } else {
                         rn = 0.;
@@ -1449,7 +1449,7 @@ void Phase2() {
             // the flow variables calculations
             for (int k = _k; k <= _n3; k++)
             {
-                if (condition->elem(i - 1, j , k) == 0 && condition->elem(i, j, k) == 0) {
+                if (condition->elem(i, j , k - 1) == 0 && condition->elem(i, j, k) == 0) {
                     rn = rBuf[k];
                     qn = qBuf[k];
 
@@ -1493,9 +1493,9 @@ void Phase2() {
 
                     if (condition->elem(i, j, k - 1) == 1 && condition->elem(i, j, k) == 0) {
                         rn = 0.;
-                        qn = qBuf[i];
+                        qn = qBuf[k];
                     } else if (condition->elem(i, j, k - 1) == 0 && condition->elem(i, j, k) == 1) {
-                        rn = rBuf[i];
+                        rn = rBuf[k];
                         qn = 0.;
                     } else {
                         rn = 0.;
@@ -1669,19 +1669,19 @@ void WriteDataParaView() {
         }
     }
 
-    fprintf(fd, "\nscalars U3 double\nLOOKUP_TABLE default\n");
-    for (int k = 1; k < n3; k++)
-    {
-        for (int j = 1; j < n2; j++)
-        {
-            for (int i = 1; i < n1; i++)
-            {
-                v = u3nCon->elem(i, j, k);
-                swap8(&v);
-                fwrite(&v, sizeof(double), (size_t) 1, fd);
-            }
-        }
-    }
+//    fprintf(fd, "\nscalars U3 double\nLOOKUP_TABLE default\n");
+//    for (int k = 1; k < n3; k++)
+//    {
+//        for (int j = 1; j < n2; j++)
+//        {
+//            for (int i = 1; i < n1; i++)
+//            {
+//                v = u3nCon->elem(i, j, k);
+//                swap8(&v);
+//                fwrite(&v, sizeof(double), (size_t) 1, fd);
+//            }
+//        }
+//    }
 
     fprintf(fd, "\nscalars PC double\nLOOKUP_TABLE default\n");
     for (int k = 1; k < n3; k++)
@@ -1711,53 +1711,70 @@ void WriteDataParaView() {
         }
     }
 
-//	fprintf(fd, "\nscalars R1 float\nLOOKUP_TABLE default\n");
-//	for (int k = 1; k < n3; k++)
-//	{
-//		for (int i = 1; i < n2; i++)
-//		{
-//			for (int j = 1; j < n1; j++)
-//			{
-//				double d2u3 = (u3nCon->elem(i, j + 1, k) - u3nCon->elem(i, j, k))/dx2,
-//				d3u2 = (u2nCon->elem(i, j, k + 1) - u2nCon->elem(i, j, k))/dx3,
-//				r1 = d2u3 - d3u2;
+//    fprintf(fd, "\nscalars R1 double\nLOOKUP_TABLE default\n");
+//    for (int k = 1; k < n3; k++)
+//    {
+//        for (int j = 1; j < n2; j++)
+//        {
+//            for (int i = 1; i < n1; i++)
+//            {
+//                double d2u3 = (u32->elem(i, j + 1, k) - u32->elem(i, j, k))/dx2,
+//                        d3u2 = (u23->elem(i, j, k + 1) - u23->elem(i, j, k))/dx3;
+//                v = d2u3 - d3u2;
 //
-//				fprintf(fd, "%f ", r1);
-//			}
-//		}
-//	}
+//                swap8(&v);
+//                fwrite(&v, sizeof(double), (size_t) 1, fd);
+//            }
+//        }
+//    }
 //
-//	fprintf(fd, "\nscalars R2 float\nLOOKUP_TABLE default\n");
-//	for (int k = 1; k < n3; k++)
-//	{
-//		for (int i = 1; i < n2; i++)
-//		{
-//			for (int j = 1; j < n1; j++)
-//			{
-//				double d3u1 = (u1nCon->elem(i, j, k + 1) - u1nCon->elem(i, j, k))/dx3,
-//						d1u3 = (u3nCon->elem(i + 1, j, k) - u3nCon->elem(i, j, k))/dx1,
-//						r2 = d3u1 - d1u3;
+//    fprintf(fd, "\nscalars R2 double\nLOOKUP_TABLE default\n");
+//    for (int k = 1; k < n3; k++)
+//    {
+//        for (int j = 1; j < n2; j++)
+//        {
+//            for (int i = 1; i < n1; i++)
+//            {
+//                double d3u1 = (u13->elem(i, j, k + 1) - u13->elem(i, j, k))/dx3,
+//                        d1u3 = (u31->elem(i + 1, j, k) - u31->elem(i, j, k))/dx1;
+//                v = d3u1 - d1u3;
 //
-//				fprintf(fd, "%f ", r2);
-//			}
-//		}
-//	}
-//
-//	fprintf(fd, "\nscalars R3 float\nLOOKUP_TABLE default\n");
-//	for (int k = 1; k < n3; k++)
-//	{
-//		for (int i = 1; i < n2; i++)
-//		{
-//			for (int j = 1; j < n1; j++)
-//			{
-//				double d1u2 = (u2nCon->elem(i + 1, j, k) - u2nCon->elem(i, j, k))/dx1,
-//						d2u1 = (u1nCon->elem(i, j + 1, k) - u1nCon->elem(i, j, k))/dx2,
-//						r3 = d1u2 - d2u1;
-//
-//				fprintf(fd, "%f ", r3);
-//			}
-//		}
-//	}
+//                swap8(&v);
+//                fwrite(&v, sizeof(double), (size_t) 1, fd);
+//            }
+//        }
+//    }
+
+    fprintf(fd, "\nscalars R3 double\nLOOKUP_TABLE default\n");
+    for (int k = 1; k < n3; k++)
+    {
+        for (int j = 1; j < n2; j++)
+        {
+            for (int i = 1; i < n1; i++)
+            {
+                double d1u2 = (u21->elem(i + 1, j, k) - u21->elem(i, j, k))/dx1,
+                        d2u1 = (u12->elem(i, j + 1, k) - u12->elem(i, j, k))/dx2;
+                v = d1u2 - d2u1;
+
+                swap8(&v);
+                fwrite(&v, sizeof(double), (size_t) 1, fd);
+            }
+        }
+    }
+
+//    fprintf(fd, "\nscalars QCriterion double\nLOOKUP_TABLE default\n");
+//    for (int k = 1; k < n3; k++)
+//    {
+//        for (int j = 1; j < n2; j++)
+//        {
+//            for (int i = 1; i < n1; i++)
+//            {
+//                v = QCriterion(i, j, k);
+//                swap8(&v);
+//                fwrite(&v, sizeof(double), (size_t) 1, fd);
+//            }
+//        }
+//    }
 
     fclose(fd);
 }
