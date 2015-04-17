@@ -289,6 +289,13 @@ void InitializeData() {
         }
     }
 
+    for (int i = 1; i < n1; ++i) {
+        for (int k = 1; k < n3; ++k) {
+            condition->elem(i, 0, k) = 1;
+            condition->elem(i, n2, k) = 1;
+        }
+    }
+
 }
 
 void TimeStepSize() {
