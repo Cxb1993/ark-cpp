@@ -24,18 +24,18 @@ void BoundaryConditions::alongX1() {
     for (int j = 1; j < _n2; ++j) {
         for (int k = 1; k < _n3; ++k) {
             // on the west plane
-            _u1->elem(_n1, j, k) = _x1Period ? _u1->elem(_n1 - 1, j, k) : 0.;
-            _u2->elem(_n1, j, k) = _x1Period ? _u2->elem(_n1 - 1, j, k) : 0.;
-            _u3->elem(_n1, j, k) = _x1Period ? _u3->elem(_n1 - 1, j, k) : 0.;
+            _u1->elem(_n1, j, k) = _u1->elem(_n1 - 1, j, k);
+            _u2->elem(_n1, j, k) = _u2->elem(_n1 - 1, j, k);
+            _u3->elem(_n1, j, k) = _u3->elem(_n1 - 1, j, k);
             _ro->elem(_n1, j, k) = _ro->elem(_n1 - 1, j, k);
-            _t->elem(_n1, j, k) = _x1Period ? _t->elem(_n1 - 1, j, k) : _t0;
+            _t->elem(_n1, j, k) = _t->elem(_n1 - 1, j, k);
 
             // on the east plane
-            _u1->elem(0, j, k) = _x1Period ? _u1->elem(1, j, k) : 0.;
-            _u2->elem(0, j, k) = _x1Period ? _u2->elem(1, j, k) : 0.;
-            _u3->elem(0, j, k) = _x1Period ? _u3->elem(1, j, k) : 0.;
+            _u1->elem(0, j, k) = _u1->elem(1, j, k);
+            _u2->elem(0, j, k) = _u2->elem(1, j, k);
+            _u3->elem(0, j, k) = _u3->elem(1, j, k);
             _ro->elem(0, j, k) = _ro->elem(1, j, k);
-            _t->elem(0, j, k) = _x1Period ? _t->elem(1, j, k) : _t0;
+            _t->elem(0, j, k) = _t->elem(1, j, k);
 
         }
     }
