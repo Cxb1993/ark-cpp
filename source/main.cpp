@@ -290,8 +290,8 @@ void InitializeData() {
         }
     }
 
-    for (int i = 1; i < n1; ++i) {
-        for (int k = 1; k < n3; ++k) {
+    for (int i = 0; i < n1 + 1; ++i) {
+        for (int k = 0; k < n3 + 1; ++k) {
             condition->elem(i, 0, k) = 1;
             condition->elem(i, n2, k) = 1;
         }
@@ -552,6 +552,8 @@ void StressTensor() {
     // 				bypassing along the faces
     // #####################################################
 
+    double v1, v2, v3;
+    double cond_c, cond_cw;
     double u1_c, u1_cw, u2_c, u2_cw, u3_c, u3_cw;
 
     // bypassing along the face perpendicular to X1
@@ -568,14 +570,34 @@ void StressTensor() {
                 u3_c = u3Con->elem(i, j, k);
                 u3_cw = u3Con->elem(i - 1, j, k);
 
+                cond_c = condition->elem(i, j, k);
+                cond_cw = condition->elem(i - 1, j, k);
+
+                if (cond_cw < 0.5 && cond_c < 0.5) {
+                    v1 = VIS * (u1_c - u1_cw) / dx1;
+                    v2 = VIS * (u2_c - u2_cw) / dx1;
+                    v3 = VIS * (u3_c - u3_cw) / dx1;
+                } else if (cond_cw < 0.5 && cond_c > 0.5) {
+                    v1 = 2 * VIS * (-u1_cw) / dx1;
+                    v2 = 2 * VIS * (-u2_cw) / dx1;
+                    v3 = 2 * VIS * (-u3_cw) / dx1;
+                } else if (cond_cw > 0.5 && cond_c < 0.5) {
+                    v1 = 2 * VIS * u1_c / dx1;
+                    v2 = 2 * VIS * u2_c / dx1;
+                    v3 = 2 * VIS * u3_c / dx1;
+                } else {
+                    v1 = v2 = v3 = 0.;
+                }
+
                 // friction stress
-                sigm11->elem(i, j, k) = VIS * (u1_c - u1_cw) / dx1;
-                sigm21->elem(i, j, k) = VIS * (u2_c - u2_cw) / dx1;
-                sigm31->elem(i, j, k) = VIS * (u3_c - u3_cw) / dx1;
+                sigm11->elem(i, j, k) = v1;
+                sigm21->elem(i, j, k) = v2;
+                sigm31->elem(i, j, k) = v3;
             }
         }
     }
 
+    double cond_cs;
     double u1_cs, u2_cs, u3_cs;
 
     // bypassing along the face perpenditcular to X2
@@ -592,14 +614,34 @@ void StressTensor() {
                 u3_c = u3Con->elem(i, j, k);
                 u3_cs = u3Con->elem(i, j - 1, k);
 
+                cond_c = condition->elem(i, j, k);
+                cond_cs = condition->elem(i, j - 1, k);
+
+                if (cond_cs < 0.5 && cond_c < 0.5) {
+                    v1 = VIS * (u1_c - u1_cs) / dx2;
+                    v2 = VIS * (u2_c - u2_cs) / dx2;
+                    v3 = VIS * (u3_c - u3_cs) / dx2;
+                } else if (cond_cs < 0.5 && cond_c > 0.5) {
+                    v1 = 2 * VIS * (-u1_cs) / dx2;
+                    v2 = 2 * VIS * (-u2_cs) / dx2;
+                    v3 = 2 * VIS * (-u3_cs) / dx2;
+                } else if (cond_cs > 0.5 && cond_c < 0.5){
+                    v1 = 2 * VIS * u1_c / dx2;
+                    v2 = 2 * VIS * u2_c / dx2;
+                    v3 = 2 * VIS * u3_c / dx2;
+                } else {
+                    v1 = v2 = v3 = 0.;
+                }
+
                 // friction stress
-                sigm12->elem(i, j, k) = VIS * (u1_c - u1_cs) / dx2;
-                sigm22->elem(i, j, k) = VIS * (u2_c - u2_cs) / dx2;
-                sigm32->elem(i, j, k) = VIS * (u3_c - u3_cs) / dx2;
+                sigm12->elem(i, j, k) = v1;
+                sigm22->elem(i, j, k) = v2;
+                sigm32->elem(i, j, k) = v3;
             }
         }
     }
 
+    double cond_cb;
     double u1_cb, u2_cb, u3_cb;
 
     // bypassing along the face perpenditcular to X3
@@ -616,10 +658,29 @@ void StressTensor() {
                 u3_c = u3Con->elem(i, j, k);
                 u3_cb = u3Con->elem(i, j, k - 1);
 
+                cond_c = condition->elem(i, j, k);
+                cond_cb = condition->elem(i, j, k - 1);
+
+                if (cond_cb < 0.5 && cond_c < 0.5) {
+                    v1 = VIS * (u1_c - u1_cb) / dx3;
+                    v2 = VIS * (u2_c - u2_cb) / dx3;
+                    v3 = VIS * (u3_c - u3_cb) / dx3;
+                } else if (cond_cb < 0.5 && cond_c > 0.5) {
+                    v1 = 2 * VIS * (-u1_cb) / dx3;
+                    v2 = 2 * VIS * (-u2_cb) / dx3;
+                    v3 = 2 * VIS * (-u3_cb) / dx3;
+                } else if (cond_cb > 0.5 && cond_c < 0.5) {
+                    v1 = 2 * VIS * u1_c / dx3;
+                    v2 = 2 * VIS * u2_c / dx3;
+                    v3 = 2 * VIS * u3_c / dx3;
+                } else {
+                    v1 = v2 = v3 = 0.;
+                }
+
                 // friction stress
-                sigm13->elem(i, j, k) = VIS * (u1_c - u1_cb) / dx3;
-                sigm23->elem(i, j, k) = VIS * (u2_c - u2_cb) / dx3;
-                sigm33->elem(i, j, k) = VIS * (u3_c - u3_cb) / dx3;
+                sigm13->elem(i, j, k) = v1;
+                sigm23->elem(i, j, k) = v2;
+                sigm33->elem(i, j, k) = v3;
             }
         }
     }
