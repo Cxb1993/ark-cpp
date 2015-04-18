@@ -29,6 +29,7 @@ int main(int argc, char** argv) {
 
     //first output
     WriteDataParaView();
+    WriteEnergy();
 
     nStep = 0;
     TIME = 0.0;
@@ -693,6 +694,8 @@ void Phase2() {
             r_f, r_fn, r_b, r_cn, r_c,
             q_f, q_b, q_bn, q_cn, q_c;
 
+    double cond_f, cond_b;
+
     double gr, gt, gu2, gu3, gq;
 
     double rmax, rmin, qmax, qmin, tmax, tmin, u2_max, u2_min, u3_max, u3_min;
@@ -901,7 +904,10 @@ void Phase2() {
             // the flow variables calculations
             for (int i = 1; i <= n1; i++)
             {
-                if (condition->elem(i - 1, j , k) == 0 && condition->elem(i, j, k) == 0) {
+                cond_b = condition->elem(i - 1, j, k);
+                cond_f = condition->elem(i, j, k);
+
+                if (cond_b < 0.5 && cond_f < 0.5) {
                     rn = rBuf[i];
                     qn = qBuf[i];
 
@@ -942,10 +948,10 @@ void Phase2() {
                 } else {
                     un = 0.;
 
-                    if (condition->elem(i - 1, j , k) == 1 && condition->elem(i, j, k) == 0) {
+                    if (cond_b > 0.5 && cond_f < 0.5) {
                         rn = 0.;
                         qn = qBuf[i];
-                    } else if (condition->elem(i - 1, j , k) == 0 && condition->elem(i, j, k) == 1) {
+                    } else if (cond_b < 0.5 && cond_f > 0.5) {
                         rn = rBuf[i];
                         qn = 0.;
                     } else {
@@ -1182,7 +1188,10 @@ void Phase2() {
             // the flow variables calculations
             for (int j = _j; j <= _n2; j++)
             {
-                if (condition->elem(i, j - 1, k) == 0 && condition->elem(i, j, k) == 0) {
+                cond_b = condition->elem(i, j - 1, k);
+                cond_f = condition->elem(i, j, k);
+
+                if (cond_b < 0.5 && cond_f < 0.5) {
                     rn = rBuf[j];
                     qn = qBuf[j];
 
@@ -1224,10 +1233,10 @@ void Phase2() {
                 } else {
                     un = 0.;
 
-                    if (condition->elem(i, j -1, k) == 1 && condition->elem(i, j, k) == 0) {
+                    if (cond_b > 0.5 && cond_f < 0.5) {
                         rn = 0.;
                         qn = qBuf[j];
-                    } else if (condition->elem(i, j -1, k) == 0 && condition->elem(i, j, k) == 1) {
+                    } else if (cond_b < 0.5 && cond_f > 0.5) {
                         rn = rBuf[j];
                         qn = 0.;
                     } else {
@@ -1456,7 +1465,10 @@ void Phase2() {
             // the flow variables calculations
             for (int k = _k; k <= _n3; k++)
             {
-                if (condition->elem(i, j , k - 1) == 0 && condition->elem(i, j, k) == 0) {
+                cond_b = condition->elem(i, j, k - 1);
+                cond_f = condition->elem(i, j, k);
+
+                if (cond_b < 0.5 && cond_f < 0.5) {
                     rn = rBuf[k];
                     qn = qBuf[k];
 
@@ -1498,10 +1510,10 @@ void Phase2() {
                 } else {
                     un = 0.;
 
-                    if (condition->elem(i, j, k - 1) == 1 && condition->elem(i, j, k) == 0) {
+                    if (cond_b > 0.5 && cond_f < 0.5) {
                         rn = 0.;
                         qn = qBuf[k];
-                    } else if (condition->elem(i, j, k - 1) == 0 && condition->elem(i, j, k) == 1) {
+                    } else if (cond_b < 0.5 && cond_f > 0.5) {
                         rn = rBuf[k];
                         qn = 0.;
                     } else {
