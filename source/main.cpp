@@ -18,6 +18,8 @@ void WriteDataParaView();
 void FreeMemory();
 void WriteEnergy();
 
+double QCriterion(int i, int j, int k);
+
 double min3d(double, double, double);
 double max3d(double, double, double);
 
@@ -101,7 +103,7 @@ void Input() {
     x3_t = 0.1;
 
     // total number of steps
-    nStop = 50000;
+    nStop = 10000;
     // print interval
     nPrint = 100;
 
@@ -388,7 +390,7 @@ void Phase1() {
         {
             for (int k = 1; k < n3; k++)
             {
-                if (condition->elem(i, j, k) == 0) {
+                if (condition->elem(i, j, k) < 0.5) {
                     // #########################################################
                     //	get velocity, density , temperature and pressure values
                     // #########################################################
@@ -1842,21 +1844,45 @@ void WriteDataParaView() {
         }
     }
 
-//    fprintf(fd, "\nscalars QCriterion double\nLOOKUP_TABLE default\n");
-//    for (int k = 1; k < n3; k++)
-//    {
-//        for (int j = 1; j < n2; j++)
-//        {
-//            for (int i = 1; i < n1; i++)
-//            {
-//                v = QCriterion(i, j, k);
-//                swap8(&v);
-//                fwrite(&v, sizeof(double), (size_t) 1, fd);
-//            }
-//        }
-//    }
+    fprintf(fd, "\nscalars QCriterion double\nLOOKUP_TABLE default\n");
+    for (int k = 1; k < n3; k++)
+    {
+        for (int j = 1; j < n2; j++)
+        {
+            for (int i = 1; i < n1; i++)
+            {
+                v = QCriterion(i, j, k);
+                swap8(&v);
+                fwrite(&v, sizeof(double), (size_t) 1, fd);
+            }
+        }
+    }
 
     fclose(fd);
+}
+
+double QCriterion(int i, int j, int k) {
+    double S11, S12, S13, S21, S22, S23, S31, S32, S33;
+    double G1, G2, G3;
+
+    S11 = (u11->elem(i + 1, j, k) - u11->elem(i, j, k))/dx1;
+    S12 = 0.5*((u12->elem(i, j + 1, k) - u12->elem(i, j, k))/dx2 + (u21->elem(i + 1, j, k) - u21->elem(i, j, k))/dx1);
+    S13 = 0.5*((u13->elem(i, j, k + 1) - u13->elem(i, j, k))/dx3 + (u31->elem(i + 1, j, k) - u31->elem(i, j, k))/dx1);
+
+    S21 = 0.5*((u21->elem(i + 1, j, k) - u21->elem(i, j, k))/dx1 + (u12->elem(i, j + 1, k) - u12->elem(i, j, k))/dx2);
+    S22 = (u22->elem(i, j + 1, k) - u22->elem(i, j, k))/dx2;
+    S23 = 0.5*((u23->elem(i, j, k + 1) - u23->elem(i, j, k))/dx3 + (u32->elem(i, j + 1, k) - u32->elem(i, j, k))/dx2);
+
+    S31 = 0.5*((u31->elem(i + 1, j, k) - u31->elem(i, j, k))/dx1 + (u13->elem(i, j, k + 1) - u13->elem(i, j, k))/dx3);
+    S32 = 0.5*((u32->elem(i, j + 1, k) - u32->elem(i, j, k))/dx2 + (u23->elem(i, j, k + 1) - u23->elem(i, j, k))/dx3);
+    S33 = (u33->elem(i, j, k + 1) - u33->elem(i, j, k))/dx3;
+
+
+    G1 = S11*S11 + S12*S21 + S13*S31;
+    G2 = S21*S12 + S22*S22 + S23*S32;
+    G3 = S31*S13 + S32*S23 + S33*S33;
+
+    return sqrt(G1 + G2 + G3);
 }
 
 double min3d(double x1, double x2, double x3) {
