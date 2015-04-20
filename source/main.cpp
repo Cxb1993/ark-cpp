@@ -101,7 +101,7 @@ void Input() {
     x3_t = 0.1;
 
     // total number of steps
-    nStop = 5000;
+    nStop = 1500;
     // print interval
     nPrint = 100;
 
@@ -941,19 +941,19 @@ void Phase2() {
 //            // i == n1
 //            un = 2*u1nCon->elem(n1 - 1, j, k) - u11->elem(n1, j, k);
 //
-//            tn = t0;
-//
-//            if (u1nCon->elem(n1 - 1, j , k) < 0) {
+//            if (u1nCon->elem(n1 - 1, j , k) >= 0) {
 //                rn = rBuf[n1];
-//                u2_n = u21->elem(n1, j, k);
-//                u3_n = u31->elem(n1, j, k);
 //                pn = (rn - un)*sound*ro0_g;
 //                ro_n = ro0_g + pn / (sound*sound);
+//                u2_n = u2fBuf[n1];
+//                u3_n = u3fBuf[n1];
+//                tn = tfBuf[n1];
 //            } else {
 //                pn = p1->elem(n1, j, k);
 //                ro_n = ro1->elem(n1, j, k);
-//                u2_n = 0;
-//                u3_n = 0;
+//                u2_n = u21->elem(n1, j, k);
+//                u3_n = u31->elem(n1, j, k);
+//                tn = tnCon->elem(n1 - 1, j, k);
 //            }
 //
 //            p1->elem(n1, j, k) = pn;
