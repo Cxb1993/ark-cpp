@@ -1020,7 +1020,7 @@ void Phase2() {
                         qn = 0.;
                     }
 
-                    pn = (rn - qn)*sound*ro0_g / 2;
+                    pn = (rn - qn)*sound*ro0_g;
                     ro_n = ro0_g + pn / (sound*sound);
                     tn = t0;
                     u2_n = 0.;
@@ -1305,7 +1305,7 @@ void Phase2() {
                         qn = 0.;
                     }
 
-                    pn = (rn - qn)*sound*ro0_g / 2;
+                    pn = (rn - qn)*sound*ro0_g;
                     ro_n = ro0_g + pn / (sound*sound);
                     tn = t0;
                     u1_n = 0.;
@@ -1582,7 +1582,7 @@ void Phase2() {
                         qn = 0.;
                     }
 
-                    pn = (rn - qn)*sound*ro0_g / 2;
+                    pn = (rn - qn)*sound*ro0_g;
                     ro_n = ro0_g + pn / (sound*sound);
                     tn = t0;
                     u1_n = 0.;
