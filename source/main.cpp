@@ -1209,8 +1209,6 @@ void Phase2() {
             // boundary conditions along the X2 axis
             // assignment of boundary invatiants and add them to the buffer arrays
 
-            int _j = 1, _n2 = n2;
-
             if (x2Period) {
                 // periodicity conditions
                 rBuf[1] = rBuf[n2];
@@ -1223,52 +1221,10 @@ void Phase2() {
                 tbBuf[n2] = tbBuf[1];
                 u2bBuf[n2] = u2bBuf[1];
                 u3bBuf[n2] = u3bBuf[1];
-            } else {
-                // no-slip
-                // j == 1
-                qn = qBuf[1];
-
-                pn = -qn * sound * ro0_g;
-                un = 0.;
-
-                ro_n = ro0_g + pn / (sound * sound);
-
-                tn = t0;
-                u1_n = 0;
-                u3_n = 0;
-
-                p2->elem(i, 1, k) = pn;
-                u22->elem(i, 1, k) = un;
-                ro2->elem(i, 1, k) = ro_n;
-                t2->elem(i, 1, k) = tn;
-                u12->elem(i, 1, k) = u1_n;
-                u32->elem(i, 1, k) = u3_n;
-
-                // j == n2
-                rn = rBuf[n2];
-
-                pn = rn * sound * ro0_g;
-                un = 0.;
-
-                ro_n = ro0_g + pn / (sound * sound);
-
-                tn = t0;
-                u1_n = 0.;
-                u3_n = 0.;
-
-                p2->elem(i, n2, k) = pn;
-                u22->elem(i, n2, k) = un;
-                ro2->elem(i, n2, k) = ro_n;
-                t2->elem(i, n2, k) = tn;
-                u12->elem(i, n2, k) = u1_n;
-                u32->elem(i, n2, k) = u3_n;
-
-                ++_j;
-                --_n2;
             }
 
             // the flow variables calculations
-            for (int j = _j; j <= _n2; j++)
+            for (int j = 1; j <= n2; j++)
             {
                 cond_b = condition->elem(i, j - 1, k);
                 cond_f = condition->elem(i, j, k);
@@ -1314,23 +1270,43 @@ void Phase2() {
                     }
                 } else {
                     un = 0.;
-
                     if (cond_b > 0.5 && cond_f < 0.5) {
-                        rn = 0.;
-                        qn = qBuf[j];
+                        if (u2nCon->elem(i, j, k) <= 0) {
+                            qn = qBuf[j];
+                            pn = -qn * sound*ro0_g;
+                            ro_n = ro0_g + pn / (sound*sound);
+                            u1_n = u2bBuf[j];
+                            u3_n = u3bBuf[j];
+                            tn = tbBuf[i];
+                        } else {
+                            pn = p2->elem(i, j, k);
+                            ro_n = ro2->elem(i, j, k);
+                            u1_n = u12->elem(i, j, k);
+                            u3_n = u32->elem(i, j, k);
+                            tn = tnCon->elem(i, j, k);
+                        }
                     } else if (cond_b < 0.5 && cond_f > 0.5) {
-                        rn = rBuf[j];
-                        qn = 0.;
+                        if (u2nCon->elem(i, j - 1, k) >=0) {
+                            rn = rBuf[j];
+                            pn = rn * sound*ro0_g;
+                            ro_n = ro0_g + pn / (sound * sound);
+                            u1_n = u2fBuf[j];
+                            u3_n = u3fBuf[j];
+                            tn = tfBuf[j];
+                        } else {
+                            pn = p2->elem(i, j, k);
+                            ro_n = ro2->elem(i, j, k);
+                            u1_n = u12->elem(i, j, k);
+                            u3_n = u32->elem(i, j, k);
+                            tn = tnCon->elem(i, j - 1, k);
+                        }
                     } else {
-                        rn = 0.;
-                        qn = 0.;
+                        pn = 0.;
+                        ro_n = ro0_g;
+                        u1_n = 0.;
+                        u3_n = 0.;
+                        tn = t0;
                     }
-
-                    pn = (rn - qn)*sound*ro0_g / 2;
-                    ro_n = ro0_g + pn / (sound*sound);
-                    tn = t0;
-                    u1_n = 0.;
-                    u3_n = 0.;
                 }
 
                 p2->elem(i, j, k) = pn;
