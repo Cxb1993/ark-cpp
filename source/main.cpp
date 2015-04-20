@@ -15,6 +15,7 @@ void Phase2();
 void StressTensor();
 void UseForces();
 void WriteDataParaView();
+void WriteDataTecplot();
 void FreeMemory();
 void WriteEnergy();
 
@@ -30,11 +31,8 @@ int main(int argc, char** argv) {
     InitializeData();
 
     //first output
-    WriteDataParaView();
+    useTecplot ? WriteDataTecplot() : WriteDataParaView();
     WriteEnergy();
-
-    nStep = 0;
-    TIME = 0.0;
 
     do
     {
@@ -52,7 +50,7 @@ int main(int argc, char** argv) {
         if (nStep % nPrint == 0)
         {
             WriteEnergy();
-            WriteDataParaView();
+            useTecplot ? WriteDataTecplot() : WriteDataParaView();
             printf("step: %d dt:%E time:%8.4f\n", nStep, dt, TIME);
         }
     } while (nStep < nStop);
@@ -65,8 +63,14 @@ void Input() {
     // Little and Big Endian
     needSwap = true;
 
+    // Use Tecplot or ParaView for output
+    useTecplot = true;
+
     // geometry index
     l = 1;
+
+    // Project directory path
+    dirPath = "C:\\Users\\Alex\\Desktop\\IM\\ark-cpp\\out\\";
 
     // total number of grid nodes along the x1 axis
     n1_g = 201;
@@ -125,19 +129,13 @@ void Input() {
     sound = 10.;
 
     // pressure on the top plane
-    pOutlet = 0;
     // velocity on the bottom plane along the X3 axis
-    u3Inlet = u30;
     // velocity on the bottom plane along the X2 axis
-    u2Inlet = u20;
     // velocity on the bottom plane along the x1 axis
-    u1Inlet = u10;
     // temperature on the bottom plane
-    tInlet = t0;
     // unperturbed density of the liquid
     ro0_g = 1.;
     // unperturbed density of the borders material
-    ro0_s = 100000000.;
 
     // #####################################################
     // 				block of arrays allocation
@@ -222,6 +220,9 @@ void Input() {
 }
 
 void InitializeData() {
+    nStep = 0;
+    TIME = 0.0;
+
     // grid step along the X1 axis
     dx1=(x1_e-x1_w)/(n1-1);
     // grid step along the X2 axis
@@ -1669,7 +1670,9 @@ void FreeMemory() {
 }
 
 void WriteEnergy() {
-    char filename[] = "C:\\Users\\Alex\\Desktop\\IM\\ark-cpp\\out\\energy.txt";
+    char filename[100];
+    sprintf(filename, "%senergy.txt", dirPath);
+
     double energy = 0;
     for(int i = 1; i < n1; i++) {
         for(int j = 1; j < n2; j++) {
@@ -1692,7 +1695,7 @@ void WriteDataParaView() {
     char filename[100];
     double v;
 
-    sprintf(filename, "C:\\Users\\Alex\\Desktop\\IM\\ark-cpp\\out\\out_%d.vtk", nStep);
+    sprintf(filename, "%sout_%d.vtk", dirPath, nStep);
     //sprintf_s(filename, 50, "out_%d.vtk", nStep);
 
     FILE *fd = fopen(filename, "wb");
@@ -1857,6 +1860,183 @@ void WriteDataParaView() {
             }
         }
     }
+
+    fclose(fd);
+}
+
+void WriteDataTecplot() {
+    char filename[100];
+
+    sprintf(filename, "%sout_%d.dat", dirPath, nStep);
+
+    FILE *fd = fopen(filename, "w");
+
+    fprintf(fd, "TITLE=\"OUT\"\n");
+    fprintf(fd, "VARIABLES = \"X\" \"Y\" \"Z\" \"U1\" \"U2\" \"U3\" \"PC\" \"TC\" \"R3\" \"QC\"");
+    fprintf(fd, "ZONE I=%d, J=%d, K=%d, T = \"%f\", SOLUTIONTIME=%f, DATAPACKING=BLOCK, VARLOCATION=([4-10]=CELLCENTERED)", n1, n2, n3, TIME, TIME);
+
+    // X1
+    for (int k = 1; k <= n3; ++k) {
+        for (int j = 1; j <= n2; ++j) {
+            for (int i = 1; i <= n1; ++i) {
+                fprintf(fd, "%15E", x1[i]);
+            }
+            fprintf(fd, "\n");
+        }
+        fprintf(fd, "\n");
+    }
+    fprintf(fd, "\n");
+
+    // X2
+    for (int k = 1; k <= n3; ++k) {
+        for (int j = 1; j <= n2; ++j) {
+            for (int i = 1; i <= n1; ++i) {
+                fprintf(fd, "%15E", x2[j]);
+            }
+            fprintf(fd, "\n");
+        }
+        fprintf(fd, "\n");
+    }
+    fprintf(fd, "\n");
+
+    // X3
+    for (int k = 1; k <= n3; ++k) {
+        for (int j = 1; j <= n2; ++j) {
+            for (int i = 1; i <= n1; ++i) {
+                fprintf(fd, "%15E", x3[k]);
+            }
+            fprintf(fd, "\n");
+        }
+        fprintf(fd, "\n");
+    }
+    fprintf(fd, "\n");
+
+    // U1
+    for (int k = 1; k < n3; ++k) {
+        for (int j = 1; j < n2; ++j) {
+            for (int i = 1; i < n1; ++i) {
+                fprintf(fd, "%15E", u1nCon->elem(i, j, k));
+            }
+            fprintf(fd, "\n");
+        }
+        fprintf(fd, "\n");
+    }
+    fprintf(fd, "\n");
+
+    // U2
+    for (int k = 1; k < n3; ++k) {
+        for (int j = 1; j < n2; ++j) {
+            for (int i = 1; i < n1; ++i) {
+                fprintf(fd, "%15E", u2nCon->elem(i, j, k));
+            }
+            fprintf(fd, "\n");
+        }
+        fprintf(fd, "\n");
+    }
+    fprintf(fd, "\n");
+
+    // U3
+    for (int k = 1; k < n3; ++k) {
+        for (int j = 1; j < n2; ++j) {
+            for (int i = 1; i < n1; ++i) {
+                fprintf(fd, "%15E", u3nCon->elem(i, j, k));
+            }
+            fprintf(fd, "\n");
+        }
+        fprintf(fd, "\n");
+    }
+    fprintf(fd, "\n");
+
+    // PC
+    for (int k = 1; k < n3; ++k) {
+        for (int j = 1; j < n2; ++j) {
+            for (int i = 1; i < n1; ++i) {
+                fprintf(fd, "%15E", ronCon->elem(i, j, k));
+            }
+            fprintf(fd, "\n");
+        }
+        fprintf(fd, "\n");
+    }
+    fprintf(fd, "\n");
+
+    // TC
+    for (int k = 1; k < n3; ++k) {
+        for (int j = 1; j < n2; ++j) {
+            for (int i = 1; i < n1; ++i) {
+                fprintf(fd, "%15E", tnCon->elem(i, j, k));
+            }
+            fprintf(fd, "\n");
+        }
+        fprintf(fd, "\n");
+    }
+    fprintf(fd, "\n");
+
+//    // R1
+//    for (int k = 1; k < n3; k++)
+//    {
+//        for (int j = 1; j < n2; j++)
+//        {
+//            for (int i = 1; i < n1; i++)
+//            {
+//                double d2u3 = (u32->elem(i, j + 1, k) - u32->elem(i, j, k))/dx2,
+//                        d3u2 = (u23->elem(i, j, k + 1) - u23->elem(i, j, k))/dx3;
+//                fprintf(fd, "%15E", d2u3 - d3u2);
+//            }
+//            fprintf(fd, "\n");
+//        }
+//        fprintf(fd, "\n");
+//    }
+//    fprintf(fd, "\n");
+//
+//    // R2
+//    fprintf(fd, "\nscalars R2 double\nLOOKUP_TABLE default\n");
+//    for (int k = 1; k < n3; k++)
+//    {
+//        for (int j = 1; j < n2; j++)
+//        {
+//            for (int i = 1; i < n1; i++)
+//            {
+//                double d3u1 = (u13->elem(i, j, k + 1) - u13->elem(i, j, k))/dx3,
+//                        d1u3 = (u31->elem(i + 1, j, k) - u31->elem(i, j, k))/dx1;
+//                fprintf(fd, "%15E", d3u1 - d1u3);
+//            }
+//            fprintf(fd, "\n");
+//        }
+//        fprintf(fd, "\n");
+//    }
+//    fprintf(fd, "\n");
+
+    // R3
+    for (int k = 1; k < n3; k++)
+    {
+        for (int j = 1; j < n2; j++)
+        {
+            for (int i = 1; i < n1; i++)
+            {
+                double d1u2 = (u21->elem(i + 1, j, k) - u21->elem(i, j, k))/dx1,
+                        d2u1 = (u12->elem(i, j + 1, k) - u12->elem(i, j, k))/dx2;
+                fprintf(fd, "%15E", d1u2 - d2u1);
+            }
+            fprintf(fd, "\n");
+        }
+        fprintf(fd, "\n");
+    }
+    fprintf(fd, "\n");
+
+    // QC
+    for (int k = 1; k < n3; k++)
+    {
+        for (int j = 1; j < n2; j++)
+        {
+            for (int i = 1; i < n1; i++)
+            {
+                fprintf(fd, "%15E", QCriterion(i, j, k));
+            }
+            fprintf(fd, "\n");
+        }
+        fprintf(fd, "\n");
+    }
+    fprintf(fd, "\n");
 
     fclose(fd);
 }
