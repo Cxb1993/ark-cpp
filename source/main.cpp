@@ -101,7 +101,7 @@ void Input() {
     x3_t = 0.1;
 
     // total number of steps
-    nStop = 50000;
+    nStop = 5000;
     // print interval
     nPrint = 100;
 
@@ -939,18 +939,19 @@ void Phase2() {
 //            u31->elem(1, j, k) = u3_n;
 //
 //            // i == n1
-//            rn = rBuf[n1];
-//
-//            un = 2*u1nCon->elem(n1, j, k) - u11->elem(n1, j, k);
-//            pn = (rn - un)*sound*ro0_g;
-//            ro_n = ro0_g + pn / (sound*sound);
+//            un = 2*u1nCon->elem(n1 - 1, j, k) - u11->elem(n1, j, k);
 //
 //            tn = t0;
 //
-//            if (u1nCon->elem(n1, j , k) < 0) {
+//            if (u1nCon->elem(n1 - 1, j , k) < 0) {
+//                rn = rBuf[n1];
 //                u2_n = u21->elem(n1, j, k);
 //                u3_n = u31->elem(n1, j, k);
+//                pn = (rn - un)*sound*ro0_g;
+//                ro_n = ro0_g + pn / (sound*sound);
 //            } else {
+//                pn = p1->elem(n1, j, k);
+//                ro_n = ro1->elem(n1, j, k);
 //                u2_n = 0;
 //                u3_n = 0;
 //            }
@@ -1008,23 +1009,43 @@ void Phase2() {
                     }
                 } else {
                     un = 0.;
-
                     if (cond_b > 0.5 && cond_f < 0.5) {
-                        rn = 0.;
-                        qn = qBuf[i];
+                        if (u1nCon->elem(i, j, k) <= 0) {
+                            qn = qBuf[i];
+                            u2_n = u2bBuf[i];
+                            u3_n = u3bBuf[i];
+                            pn = -qn * sound*ro0_g;
+                            ro_n = ro0_g + pn / (sound*sound);
+                            tn = tbBuf[i];
+                        } else {
+                            u2_n = u21->elem(i, j, k);
+                            u3_n = u31->elem(i, j, k);
+                            pn = p1->elem(i, j, k);
+                            ro_n = ro1->elem(i, j, k);
+                            tn = tnCon->elem(i, j, k);
+                        }
                     } else if (cond_b < 0.5 && cond_f > 0.5) {
-                        rn = rBuf[i];
-                        qn = 0.;
+                        if (u1nCon->elem(i - 1, j, k) >= 0) {
+                            rn = rBuf[i];
+                            u2_n = u2fBuf[i];
+                            u3_n = u3fBuf[i];
+                            pn = rn * sound*ro0_g;
+                            ro_n = ro0_g + pn / (sound*sound);
+                            tn = tfBuf[i];
+                        } else {
+                            u2_n = u21->elem(i, j, k);
+                            u3_n = u31->elem(i, j, k);
+                            pn = p1->elem(i, j, k);
+                            ro_n = ro1->elem(i, j, k);
+                            tn = tnCon->elem(i - 1, j, k);
+                        }
                     } else {
-                        rn = 0.;
-                        qn = 0.;
+                        u2_n = 0.;
+                        u3_n = 0.;
+                        pn = 0.;
+                        ro_n = ro0_g;
+                        tn = t0;
                     }
-
-                    pn = (rn - qn)*sound*ro0_g / 2;
-                    ro_n = ro0_g + pn / (sound*sound);
-                    tn = t0;
-                    u2_n = 0.;
-                    u3_n = 0.;
                 }
 
                 p1->elem(i, j, k) = pn;
