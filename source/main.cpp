@@ -20,6 +20,8 @@ void FreeMemory();
 void WriteEnergy();
 
 double QCriterion(int i, int j, int k);
+void AverageValues();
+void WriteAverageValues(double);
 
 double min3d(double, double, double);
 double max3d(double, double, double);
@@ -27,6 +29,8 @@ double max3d(double, double, double);
 static void swap8(void *);
 
 int main(int argc, char** argv) {
+    double startTime = 0.;
+
     Input();
     InitializeData();
 
@@ -47,6 +51,10 @@ int main(int argc, char** argv) {
         UseForces();
         TIME += 0.5*dt;
 
+        if (TIME >= 60.) {
+            if (startTime < 60.) startTime = TIME;
+            AverageValues();
+        }
         if (nStep % nPrint == 0)
         {
             WriteEnergy();
@@ -54,6 +62,7 @@ int main(int argc, char** argv) {
             printf("step: %d dt:%E time:%8.4f\n", nStep, dt, TIME);
         }
     } while (nStep < nStop);
+    WriteAverageValues(startTime);
     FreeMemory();
     printf("Done!");
     return 0;
@@ -107,7 +116,7 @@ void Input() {
     x3_t = 0.1;
 
     // total number of steps
-    nStop = 10000;
+    nStop = 300000;
     // print interval
     nPrint = 100;
 
@@ -115,7 +124,7 @@ void Input() {
     CFL = 0.2;
 
     // kinematic viscosity
-    VIS = 1./30000.;  // 0.5
+    VIS = 1./5000.;  // 0.5
     // initial temperature
     t0 = 1.;
 
@@ -128,14 +137,8 @@ void Input() {
     // sound velocity
     sound = 10.;
 
-    // pressure on the top plane
-    // velocity on the bottom plane along the X3 axis
-    // velocity on the bottom plane along the X2 axis
-    // velocity on the bottom plane along the x1 axis
-    // temperature on the bottom plane
     // unperturbed density of the liquid
     ro0_g = 1.;
-    // unperturbed density of the borders material
 
     // #####################################################
     // 				block of arrays allocation
@@ -167,6 +170,10 @@ void Input() {
 
     // solid/liqud condition
     condition = new Arr3d(n1 + 1, n2 + 1, n3 + 1);
+
+    // average values
+    averageU1 = new Arr3d(n1 + 1, n2 + 2, n3 + 1);
+    averageU2 = new Arr3d(n1 + 1, n2 + 2, n3 + 1);
 
     // variables perpendicular to the axis x1
     ro1 = new Arr3d(n1 + 2, n2 + 2, n3 + 2);
@@ -262,6 +269,9 @@ void InitializeData() {
                 u3nCon->elem(i, j, k) = u30;
                 ronCon->elem(i, j, k) = ro0_g;
                 tnCon->elem(i, j, k) = t0;
+
+                averageU1->elem(i, j, k) = 0.;
+                averageU2->elem(i, j, k) = 0.;
             }
         }
     }
@@ -702,22 +712,24 @@ void StressTensor() {
     for (int i = 1; i < n1; ++i) {
         for (int j = 1; j < n2; ++j) {
             for (int k = 1; k < n3; ++k) {
+                double ro_c = roCon->elem(i, j, k);
+
                 // friction forces
                 if (condition->elem(i, j, k) == 0) {
                     f1->elem(i, j, k) =
-                            (sigm11->elem(i + 1, j, k) - sigm11->elem(i, j, k)) * ds1 +
+                            ((sigm11->elem(i + 1, j, k) - sigm11->elem(i, j, k)) * ds1 +
                             (sigm12->elem(i, j + 1, k) - sigm12->elem(i, j, k)) * ds2 +
-                            (sigm13->elem(i, j, k + 1) - sigm13->elem(i, j, k)) * ds3;
+                            (sigm13->elem(i, j, k + 1) - sigm13->elem(i, j, k)) * ds3)*ro_c;
 
                     f2->elem(i, j, k) =
-                            (sigm21->elem(i + 1, j, k) - sigm21->elem(i, j, k)) * ds1 +
+                            ((sigm21->elem(i + 1, j, k) - sigm21->elem(i, j, k)) * ds1 +
                             (sigm22->elem(i, j + 1, k) - sigm22->elem(i, j, k)) * ds2 +
-                            (sigm23->elem(i, j, k + 1) - sigm23->elem(i, j, k)) * ds3;
+                            (sigm23->elem(i, j, k + 1) - sigm23->elem(i, j, k)) * ds3)*ro_c;
 
                     f3->elem(i, j, k) =
-                            (sigm31->elem(i + 1, j, k) - sigm31->elem(i, j, k)) * ds1 +
+                            ((sigm31->elem(i + 1, j, k) - sigm31->elem(i, j, k)) * ds1 +
                             (sigm32->elem(i, j + 1, k) - sigm32->elem(i, j, k)) * ds2 +
-                            (sigm33->elem(i, j, k + 1) - sigm33->elem(i, j, k)) * ds3;
+                            (sigm33->elem(i, j, k + 1) - sigm33->elem(i, j, k)) * ds3)*ro_c;
                 } else {
                     f1->elem(i, j, k) = 0.;
                     f2->elem(i, j, k) = 0.;
@@ -1622,6 +1634,9 @@ void FreeMemory() {
 
     delete condition;
 
+    delete averageU1;
+    delete averageU2;
+
     delete ro1;
     delete t1;
     delete u11;
@@ -1677,9 +1692,9 @@ void WriteEnergy() {
     for(int i = 1; i < n1; i++) {
         for(int j = 1; j < n2; j++) {
             for(int k = 1; k < n3; k++) {
-                energy += u1Con->elem(i, j, k)*u1Con->elem(i, j, k) +
-                          u2Con->elem(i, j, k)*u2Con->elem(i, j, k) +
-                          u3Con->elem(i, j, k)*u3Con->elem(i, j, k)/2;
+                energy += (u1nCon->elem(i, j, k)*u1nCon->elem(i, j, k) +
+                          u2nCon->elem(i, j, k)*u2nCon->elem(i, j, k) +
+                          u3nCon->elem(i, j, k)*u3nCon->elem(i, j, k))/2;
             }
         }
     }
@@ -2063,6 +2078,118 @@ double QCriterion(int i, int j, int k) {
     G3 = S31*S13 + S32*S23 + S33*S33;
 
     return sqrt(G1 + G2 + G3);
+}
+
+void AverageValues() {
+    for (int k = 1; k < n3; k++)
+    {
+        for (int j = 1; j < n2; j++)
+        {
+            for (int i = 1; i < n1; i++)
+            {
+                averageU1->elem(i,j,k) += u1nCon->elem(i, j, k) * dt;
+                averageU2->elem(i,j,k) += u2nCon->elem(i, j, k) * dt;
+            }
+        }
+    }
+}
+
+void WriteAverageValues(double time) {
+    char filename[100];
+
+    sprintf(filename, "%saverage.dat", dirPath);
+
+    FILE *fd = fopen(filename, "w");
+
+    fprintf(fd, "TITLE=\"OUT\"\n");
+    fprintf(fd, "VARIABLES = \"X\" \"Y\" \"Z\" \"U1\" \"U2\"\n");
+    fprintf(fd, "ZONE I=%d, J=%d, K=%d, DATAPACKING=BLOCK, VARLOCATION=([4-5]=CELLCENTERED)\n", n1, n2, n3);
+
+    // X1
+    for (int k = 1; k <= n3; ++k) {
+        for (int j = 1; j <= n2; ++j) {
+            for (int i = 1; i <= n1; ++i) {
+                fprintf(fd, "%15E", x1[i]);
+            }
+            fprintf(fd, "\n");
+        }
+        fprintf(fd, "\n");
+    }
+    fprintf(fd, "\n");
+
+    // X2
+    for (int k = 1; k <= n3; ++k) {
+        for (int j = 1; j <= n2; ++j) {
+            for (int i = 1; i <= n1; ++i) {
+                fprintf(fd, "%15E", x2[j]);
+            }
+            fprintf(fd, "\n");
+        }
+        fprintf(fd, "\n");
+    }
+    fprintf(fd, "\n");
+
+    // X3
+    for (int k = 1; k <= n3; ++k) {
+        for (int j = 1; j <= n2; ++j) {
+            for (int i = 1; i <= n1; ++i) {
+                fprintf(fd, "%15E", x3[k]);
+            }
+            fprintf(fd, "\n");
+        }
+        fprintf(fd, "\n");
+    }
+    fprintf(fd, "\n");
+
+    // U1
+    for (int k = 1; k < n3; k++)
+    {
+        for (int j = 1; j < n2; j++)
+        {
+            for (int i = 1; i < n1; i++)
+            {
+                averageU1->elem(i, j ,k) /= (TIME - time);
+                fprintf(fd, "%15E", averageU1->elem(i, j, k));
+            }
+            fprintf(fd, "\n");
+        }
+        fprintf(fd, "\n");
+    }
+    fprintf(fd, "\n");
+
+    // U2
+    for (int k = 1; k < n3; k++)
+    {
+        for (int j = 1; j < n2; j++)
+        {
+            for (int i = 1; i < n1; i++)
+            {
+                averageU2->elem(i, j ,k) /= (TIME - time);
+                fprintf(fd, "%15E", averageU2->elem(i, j, k));
+            }
+            fprintf(fd, "\n");
+        }
+        fprintf(fd, "\n");
+    }
+    fprintf(fd, "\n");
+
+    // R3
+//    for (int k = 1; k < n3; k++)
+//    {
+//        for (int j = 1; j < n2; j++)
+//        {
+//            for (int i = 1; i < n1; i++)
+//            {
+//                averageRot->elem(i, j ,k) /= (TIME - time);
+//                fprintf(fd, "%15E", averageRot->elem(i, j, k));
+//            }
+//            fprintf(fd, "\n");
+//        }
+//        fprintf(fd, "\n");
+//    }
+//    fprintf(fd, "\n");
+
+    fclose(fd);
 }
 
 double min3d(double x1, double x2, double x3) {

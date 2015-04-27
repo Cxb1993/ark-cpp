@@ -100,4 +100,10 @@ double *rBuf, *qBuf, *tfBuf, *tbBuf, *u2fBuf, *u2bBuf, *u3fBuf, *u3bBuf;
 
 Arr3d *condition;
 
+//	-----------------------------------------------------------------------------------
+// averageRot(:,:,:) - average value of rotor
+
+Arr3d *averageU1;
+Arr3d *averageU2;
+
 #endif //_ARK_CPP_BULK_H_
