@@ -62,7 +62,7 @@ int main(int argc, char** argv) {
             printf("step: %d dt:%E time:%8.4f\n", nStep, dt, TIME);
         }
     } while (nStep < nStop);
-    WriteAverageValues(startTime);
+    if (TIME > 60.0) WriteAverageValues(startTime);
     FreeMemory();
     printf("Done!");
     return 0;
@@ -73,7 +73,7 @@ void Input() {
     needSwap = true;
 
     // Use Tecplot or ParaView for output
-    useTecplot = true;
+    useTecplot = false;
 
     // geometry index
     l = 1;
@@ -116,7 +116,7 @@ void Input() {
     x3_t = 0.1;
 
     // total number of steps
-    nStop = 300000;
+    nStop = 120000;
     // print interval
     nPrint = 100;
 
@@ -750,11 +750,13 @@ void UseForces() {
     for (int i = 1; i < n1; ++i) {
         for (int j = 1; j < n2; ++j) {
             for (int k = 1; k < n3; ++k) {
-                ro_cn = ronCon->elem(i, j, k);
+                if (condition->elem(i, j, k) == 0) {
+                    ro_cn = ronCon->elem(i, j, k);
 
-                u1nCon->elem(i, j, k) = (ro_cn*dvc*u1nCon->elem(i, j, k) + 0.5*dt*f1->elem(i, j, k))/(dvc*ro_cn);
-                u2nCon->elem(i, j, k) = (ro_cn*dvc*u2nCon->elem(i, j, k) + 0.5*dt*f2->elem(i, j, k))/(dvc*ro_cn);
-                u3nCon->elem(i, j, k) = (ro_cn*dvc*u3nCon->elem(i, j, k) + 0.5*dt*f3->elem(i, j, k))/(dvc*ro_cn);
+                    u1nCon->elem(i, j, k) = (ro_cn*dvc*u1nCon->elem(i, j, k) + 0.5*dt*f1->elem(i, j, k))/(dvc*ro_cn);
+                    u2nCon->elem(i, j, k) = (ro_cn*dvc*u2nCon->elem(i, j, k) + 0.5*dt*f2->elem(i, j, k))/(dvc*ro_cn);
+                    u3nCon->elem(i, j, k) = (ro_cn*dvc*u3nCon->elem(i, j, k) + 0.5*dt*f3->elem(i, j, k))/(dvc*ro_cn);
+                }
             }
         }
     }
@@ -930,11 +932,11 @@ void Phase2() {
             u3fBuf[1] = 0.;
 
             // periodicity conditions
-            qBuf[n1] = 5./6.;
-            tbBuf[n1] = t0;
-            u2bBuf[n1] = 0.;
-            u3bBuf[n1] = 0.;
-
+//            qBuf[n1] = 5./6.;
+//            tbBuf[n1] = t0;
+//            u2bBuf[n1] = 0.;
+//            u3bBuf[n1] = 0.;
+//
             // no-slip conditions
             // i == 1
 //            qn = qBuf[1];
@@ -954,31 +956,44 @@ void Phase2() {
 //            u31->elem(1, j, k) = u3_n;
 //
 //            // i == n1
-//            rn = rBuf[n1];
+            if (u1nCon->elem(n1 - 1, j , k) >= 0) {
+                un = 2*u1nCon->elem(n1 - 1, j, k) - u11->elem(n1, j, k);
+                u2_n = u2fBuf[n1];
+                u3_n = u2fBuf[n1];
+
+                rn = rBuf[n1];
+                pn = (rn - un)*sound*ro0_g;
+                ro_n = ro0_g + pn / (sound*sound);
+                tn = tfBuf[n1];
+            } else {
+//                rn = rBuf[n1];
+//                qn = 5./6.;
 //
-//            un = 2*u1nCon->elem(n1, j, k) - u11->elem(n1, j, k);
-//            pn = (rn - un)*sound*ro0_g;
-//            ro_n = ro0_g + pn / (sound*sound);
+//                un = (rn + qn) / 2;
+//                pn = (rn - qn)*sound*ro0_g / 2;
+//                ro_n = ro0_g + pn / (sound*sound);
 //
-//            tn = t0;
-//
-//            if (u1nCon->elem(n1, j , k) < 0) {
-//                u2_n = u21->elem(n1, j, k);
-//                u3_n = u31->elem(n1, j, k);
-//            } else {
-//                u2_n = 0;
-//                u3_n = 0;
-//            }
-//
-//            p1->elem(n1, j, k) = pn;
-//            u11->elem(n1, j, k) = un;
-//            ro1->elem(n1, j, k) = ro_n;
-//            t1->elem(n1, j, k) = tn;
-//            u21->elem(n1, j, k) = u2_n;
-//            u31->elem(n1, j, k) = u3_n;
+//                u2_n = 0.;
+//                u3_n = 0.;
+//                tn = t0;
+
+                un = u1nCon->elem(n1 - 1, j, k);
+                u2_n = u2nCon->elem(n1 - 1, j, k);
+                u3_n = u3nCon->elem(n1 - 1, j, k);
+                ro_n = ronCon->elem(n1 - 1, j, k);
+                pn = (ro_n - ro0_g) * (sound*sound);
+                tn = tnCon->elem(n1 - 1, j, k);
+            }
+
+            p1->elem(n1, j, k) = pn;
+            u11->elem(n1, j, k) = un;
+            ro1->elem(n1, j, k) = ro_n;
+            t1->elem(n1, j, k) = tn;
+            u21->elem(n1, j, k) = u2_n;
+            u31->elem(n1, j, k) = u3_n;
 
             // the flow variables calculations
-            for (int i = 1; i <= n1; i++)
+            for (int i = 1; i < n1; i++)
             {
                 cond_b = condition->elem(i - 1, j, k);
                 cond_f = condition->elem(i, j, k);
@@ -1023,23 +1038,43 @@ void Phase2() {
                     }
                 } else {
                     un = 0.;
-
                     if (cond_b > 0.5 && cond_f < 0.5) {
-                        rn = 0.;
-                        qn = qBuf[i];
+                        if (u1nCon->elem(i, j, k) <= 0) {
+                            qn = qBuf[i];
+                            u2_n = u2bBuf[i];
+                            u3_n = u3bBuf[i];
+                            pn = -qn * sound*ro0_g;
+                            ro_n = ro0_g + pn / (sound*sound);
+                            tn = tbBuf[i];
+                        } else {
+                            u2_n = u2nCon->elem(i, j, k);
+                            u3_n = u3nCon->elem(i, j, k);
+                            ro_n = ronCon->elem(i, j, k);
+                            pn = (ro_n - ro0_g) * (sound*sound);
+                            tn = tnCon->elem(i, j, k);
+                        }
                     } else if (cond_b < 0.5 && cond_f > 0.5) {
-                        rn = rBuf[i];
-                        qn = 0.;
+                        if (u1nCon->elem(i - 1, j, k) >= 0) {
+                            rn = rBuf[i];
+                            u2_n = u2fBuf[i];
+                            u3_n = u3fBuf[i];
+                            pn = rn * sound*ro0_g;
+                            ro_n = ro0_g + pn / (sound*sound);
+                            tn = tfBuf[i];
+                        } else {
+                            u2_n = u2nCon->elem(i - 1, j, k);
+                            u3_n = u3nCon->elem(i - 1, j, k);
+                            ro_n = ronCon->elem(i - 1, j, k);
+                            pn = (ro_n - ro0_g) * (sound*sound);
+                            tn = tnCon->elem(i - 1, j, k);
+                        }
                     } else {
-                        rn = 0.;
-                        qn = 0.;
+                        u2_n = 0.;
+                        u3_n = 0.;
+                        pn = 0.;
+                        ro_n = ro0_g;
+                        tn = t0;
                     }
-
-                    pn = (rn - qn)*sound*ro0_g;
-                    ro_n = ro0_g + pn / (sound*sound);
-                    tn = t0;
-                    u2_n = 0.;
-                    u3_n = 0.;
                 }
 
                 p1->elem(i, j, k) = pn;
@@ -1308,23 +1343,43 @@ void Phase2() {
                     }
                 } else {
                     un = 0.;
-
                     if (cond_b > 0.5 && cond_f < 0.5) {
-                        rn = 0.;
-                        qn = qBuf[j];
+                        if (u2nCon->elem(i, j, k) <= 0) {
+                            qn = qBuf[j];
+                            pn = -qn * sound*ro0_g;
+                            ro_n = ro0_g + pn / (sound*sound);
+                            u1_n = u2bBuf[j];
+                            u3_n = u3bBuf[j];
+                            tn = tbBuf[i];
+                        } else {
+                            ro_n = ronCon->elem(i, j, k);
+                            pn = (ro_n - ro0_g) * (sound*sound);
+                            u1_n = u2nCon->elem(i, j, k);
+                            u3_n = u3nCon->elem(i, j, k);
+                            tn = tnCon->elem(i, j, k);
+                        }
                     } else if (cond_b < 0.5 && cond_f > 0.5) {
-                        rn = rBuf[j];
-                        qn = 0.;
+                        if (u2nCon->elem(i, j - 1, k) >= 0) {
+                            rn = rBuf[j];
+                            pn = rn * sound*ro0_g;
+                            ro_n = ro0_g + pn / (sound * sound);
+                            u1_n = u2fBuf[j];
+                            u3_n = u3fBuf[j];
+                            tn = tfBuf[j];
+                        } else {
+                            ro_n = ronCon->elem(i, j - 1, k);
+                            pn = (ro_n - ro0_g) * (sound*sound);
+                            u1_n = u2nCon->elem(i, j - 1, k);
+                            u3_n = u3nCon->elem(i, j - 1, k);
+                            tn = tnCon->elem(i, j - 1, k);
+                        }
                     } else {
-                        rn = 0.;
-                        qn = 0.;
+                        pn = 0.;
+                        ro_n = ro0_g;
+                        u1_n = 0.;
+                        u3_n = 0.;
+                        tn = t0;
                     }
-
-                    pn = (rn - qn)*sound*ro0_g;
-                    ro_n = ro0_g + pn / (sound*sound);
-                    tn = t0;
-                    u1_n = 0.;
-                    u3_n = 0.;
                 }
 
                 p2->elem(i, j, k) = pn;
@@ -1585,23 +1640,43 @@ void Phase2() {
                     }
                 } else {
                     un = 0.;
-
                     if (cond_b > 0.5 && cond_f < 0.5) {
-                        rn = 0.;
-                        qn = qBuf[k];
+                        if (u3nCon->elem(i, j, k) <= 0) {
+                            qn = qBuf[k];
+                            pn = -qn * sound*ro0_g;
+                            ro_n = ro0_g + pn / (sound*sound);
+                            u1_n = u2bBuf[k];
+                            u2_n = u3bBuf[k];
+                            tn = tbBuf[k];
+                        } else {
+                            ro_n = ronCon->elem(i, j, k);
+                            pn = (ro_n - ro0_g)*(sound*sound);
+                            u1_n = u1nCon->elem(i, j, k);
+                            u2_n = u2nCon->elem(i, j, k);
+                            tn = tnCon->elem(i, j, k);
+                        }
                     } else if (cond_b < 0.5 && cond_f > 0.5) {
-                        rn = rBuf[k];
-                        qn = 0.;
+                        if (u3nCon->elem(i, j, k - 1) >= 0) {
+                            rn = rBuf[k];
+                            pn = rn * sound*ro0_g;
+                            ro_n = ro0_g + pn / (sound*sound);
+                            u1_n = u2fBuf[k];
+                            u2_n = u3fBuf[k];
+                            tn = tfBuf[k];
+                        } else {
+                            ro_n = ronCon->elem(i, j, k - 1);
+                            pn = (ro_n - ro0_g)*(sound*sound);
+                            u1_n = u1nCon->elem(i, j, k - 1);
+                            u2_n = u2nCon->elem(i, j, k - 1);
+                            tn = tnCon->elem(i, j, k - 1);
+                        }
                     } else {
-                        rn = 0.;
-                        qn = 0.;
+                        pn = 0.;
+                        ro_n = ro0_g;
+                        u1_n = 0.;
+                        u2_n = 0.;
+                        tn = t0;
                     }
-
-                    pn = (rn - qn)*sound*ro0_g;
-                    ro_n = ro0_g + pn / (sound*sound);
-                    tn = t0;
-                    u1_n = 0.;
-                    u2_n = 0.;
                 }
 
                 p3->elem(i, j, k) = pn;
