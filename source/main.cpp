@@ -983,7 +983,7 @@ void Phase2() {
 //                ro_n = ronCon->elem(n1 - 1, j, k);
 //                pn = (ro_n - ro0_g) * (sound*sound);
 //                tn = tnCon->elem(n1 - 1, j, k);
-            }
+//            }
 
 //            p1->elem(n1, j, k) = pn;
 //            u11->elem(n1, j, k) = un;
